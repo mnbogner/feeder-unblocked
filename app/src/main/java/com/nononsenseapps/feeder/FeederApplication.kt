@@ -48,6 +48,7 @@ import okhttp3.Cache
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import org.conscrypt.Conscrypt
+import org.greatfire.envoy.CronetInterceptor
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.bind
@@ -135,6 +136,9 @@ class FeederApplication : Application(), DIAware, ImageLoaderFactory {
                         },
                     )
                 }
+                // this interceptor will be bypassed if no valid proxy urls were found at startup
+                // the app will connect to the internet directly if possible
+                .addInterceptor(CronetInterceptor())
                 .build()
 
             ImageLoader.Builder(instance())

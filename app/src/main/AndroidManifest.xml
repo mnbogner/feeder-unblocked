@@ -13,6 +13,7 @@
   <!-- To limit syncing to only WiFi -->
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
   <permission
     android:name="com.nononsenseapps.feeder.permission.read"
@@ -177,5 +178,18 @@
       android:authorities="com.nononsenseapps.feeder.rssprovider"
       android:exported="true"
       android:readPermission="com.nononsenseapps.feeder.permission.read" />
+
+    <service
+      android:name="org.greatfire.envoy.NetworkIntentService"
+      android:stopWithTask="false"
+      android:exported="false"
+      android:isolatedProcess="false" />
+
+    <service
+      android:name="org.greatfire.envoy.ShadowsocksService"
+      android:stopWithTask="false"
+      android:exported="false"
+      android:isolatedProcess="false" />
+
   </application>
 </manifest>

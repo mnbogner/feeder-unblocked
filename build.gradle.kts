@@ -5,6 +5,9 @@ buildscript {
         mavenCentral()
         google()
     }
+    dependencies {
+        classpath("org.greatfire:IEnvoyProxy:1.3.1")
+    }
 }
 
 plugins {
