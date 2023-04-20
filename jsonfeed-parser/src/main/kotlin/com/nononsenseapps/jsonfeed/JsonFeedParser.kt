@@ -7,6 +7,7 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import okhttp3.Cache
+import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.ResponseBody
@@ -18,7 +19,16 @@ fun cachingHttpClient(
     connectTimeoutSecs: Long = 30L,
     readTimeoutSecs: Long = 30L
 ): OkHttpClient {
-    val builder: OkHttpClient.Builder = OkHttpClient.Builder()
+
+    System.out.println("FOO - cachingHttpClient -> client should not init")
+
+    val builder: OkHttpClient.Builder = OkHttpClient
+        .Builder()
+        // TEMP
+        .addInterceptor { chain ->
+            System.out.println("FOO - cachingHttpClient -> client should not be used")
+            chain.proceed(chain.request())
+        }
 
     if (cacheDirectory != null) {
         builder.cache(Cache(cacheDirectory, cacheSize))
@@ -43,7 +53,7 @@ fun feedAdapter(): JsonAdapter<Feed> =
  * A parser for JSONFeeds. CacheDirectory and CacheSize are only relevant if feeds are downloaded. They are not used
  * for parsing JSON directly.
  */
-class JsonFeedParser(
+open class JsonFeedParser(
     private val httpClient: OkHttpClient,
     private val jsonFeedAdapter: JsonAdapter<Feed>
 ) {

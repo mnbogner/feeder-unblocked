@@ -1,12 +1,12 @@
 package com.nononsenseapps.feeder.model
 
 import android.util.Log
+import com.nononsenseapps.feeder.envoy.EnvoyFeedParser
 import com.nononsenseapps.feeder.util.asFeed
 import com.nononsenseapps.feeder.util.relativeLinkIntoAbsolute
 import com.nononsenseapps.feeder.util.relativeLinkIntoAbsoluteOrThrow
 import com.nononsenseapps.feeder.util.sloppyLinkToStrictURLOrNull
 import com.nononsenseapps.jsonfeed.Feed
-import com.nononsenseapps.jsonfeed.JsonFeedParser
 import com.rometools.rome.io.SyndFeedInput
 import com.rometools.rome.io.XmlReader
 import java.io.IOException
@@ -35,7 +35,8 @@ private const val YOUTUBE_CHANNEL_ID_ATTR = "data-channel-external-id"
 
 class FeedParser(override val di: DI) : DIAware {
     private val client: OkHttpClient by instance()
-    private val jsonFeedParser: JsonFeedParser by instance()
+    // ENVOY INTEGRATION
+    private val jsonFeedParser: EnvoyFeedParser by instance()
 
     /**
      * Finds the preferred alternate link in the header of an HTML/XML document pointing to feeds.

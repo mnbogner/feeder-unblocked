@@ -336,6 +336,9 @@ dependencies {
     // implementation("org.greatfire.envoy:cronet:102.0.5005.195-4")
     // implementation("org.greatfire:envoy:102.0.5005.195.2")
     implementation("org.greatfire:IEnvoyProxy:1.3.1")
+    // implementation(libs.cronet)
+    // implementation(libs.envoy)
+    // implementation(libs.proxy)
 }
 
 fun getListOfSupportedLocales(): List<String> {

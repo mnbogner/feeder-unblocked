@@ -29,6 +29,7 @@ import com.nononsenseapps.feeder.db.room.SyncRemoteDao
 import com.nononsenseapps.feeder.di.androidModule
 import com.nononsenseapps.feeder.di.archModelModule
 import com.nononsenseapps.feeder.di.networkModule
+import com.nononsenseapps.feeder.envoy.envoyHttpClient
 import com.nononsenseapps.feeder.model.TTSStateHolder
 import com.nononsenseapps.feeder.model.UserAgentInterceptor
 import com.nononsenseapps.feeder.notifications.NotificationsWorker
@@ -37,7 +38,6 @@ import com.nononsenseapps.feeder.util.FilePathProvider
 import com.nononsenseapps.feeder.util.ToastMaker
 import com.nononsenseapps.feeder.util.currentlyUnmetered
 import com.nononsenseapps.feeder.util.filePathProvider
-import com.nononsenseapps.jsonfeed.cachingHttpClient
 import java.io.File
 import java.security.Security
 import java.util.concurrent.TimeUnit
@@ -104,12 +104,16 @@ class FeederApplication : Application(), DIAware, ImageLoaderFactory {
 
         bind<OkHttpClient>() with singleton {
             val filePathProvider = instance<FilePathProvider>()
-            cachingHttpClient(
+            // ENVOY INTEGRATION
+            envoyHttpClient(
                 cacheDirectory = (filePathProvider.httpCacheDir),
             ).newBuilder()
                 .addNetworkInterceptor(UserAgentInterceptor)
                 .build()
         }
+
+        System.out.println("FOO - DI.lazy -> build okhttp client with cronet interceptor")
+
         bind<ImageLoader>() with singleton {
             val filePathProvider = instance<FilePathProvider>()
             val repository = instance<Repository>()
@@ -197,6 +201,9 @@ class FeederApplication : Application(), DIAware, ImageLoaderFactory {
     }
 
     override fun newImageLoader(): ImageLoader {
+
+        System.out.println("FOO - newImageLoader -> run?")
+
         return di.direct.instance()
     }
 }
