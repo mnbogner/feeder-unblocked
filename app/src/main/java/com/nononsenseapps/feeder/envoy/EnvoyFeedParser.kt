@@ -1,15 +1,18 @@
 package com.nononsenseapps.feeder.envoy
 
+import android.util.Log
 import com.nononsenseapps.jsonfeed.Feed
 import com.nononsenseapps.jsonfeed.JsonFeedParser
 import com.nononsenseapps.jsonfeed.feedAdapter
 import com.nononsenseapps.jsonfeed.trustAllCerts
 import com.squareup.moshi.JsonAdapter
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import org.greatfire.envoy.CronetInterceptor
+import org.greatfire.envoy.CronetNetworking
 
 fun envoyHttpClient(
     cacheDirectory: File? = null,
@@ -23,8 +26,20 @@ fun envoyHttpClient(
 
     val builder: OkHttpClient.Builder = OkHttpClient
         .Builder()
-        // this interceptor will be bypassed if no valid proxy urls were found at startup
-        // the app will connect to the internet directly if possible
+        .addInterceptor { chain ->
+            // data sources are bound at startup with this instance of OkHttpClient so
+            // we need an interceptor to block connections until CronetEngine is ready
+            if (CronetNetworking.cronetEngine() == null) {
+                System.out.println("FOO - no envoy so intercept and return error")
+                Log.d("FOO2", "no envoy so intercept and return error")
+                throw IOException("oops")
+            } else {
+                System.out.println("FOO - envoy running so pass through")
+                Log.d("FOO2", "envoy running so pass through")
+                chain.proceed(chain.request())
+            }
+        }
+        // CronetInterceptor will be bypassed if CronetEngine has not been initialized
         .addInterceptor(CronetInterceptor())
 
     if (cacheDirectory != null) {

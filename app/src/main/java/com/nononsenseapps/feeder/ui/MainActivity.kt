@@ -61,6 +61,8 @@ class MainActivity : DIAwareComponentActivity() {
                             System.out.println("FOO - broadcastReceiver -> found a valid url: " + validUrl + ", start engine")
                             CronetNetworking.initializeCronetEngine(context, validUrl)
                         }
+                        // now that envoy has started (or not) sync (maybe)
+                        maybeRequestSync()
                     } else {
                         System.out.println("FOO - broadcastReceiver -> already selected a valid url, ignore valid url: " + validUrl)
                     }
@@ -80,6 +82,7 @@ class MainActivity : DIAwareComponentActivity() {
                     }
                     // set flag so resuming activity doesn't trigger another envoy check
                     waitingForEnvoy = false
+                    // do we try to sync if envoy has failed?
                 } else {
                     System.out.println("FOO - broadcastReceiver -> received unexpected intent: " + intent.action)
                 }
@@ -137,7 +140,6 @@ class MainActivity : DIAwareComponentActivity() {
 
         mainActivityViewModel.setResumeTime()
         scheduleGetUpdates(di)
-        maybeRequestSync()
     }
 
     fun envoyInit() {
@@ -166,11 +168,16 @@ class MainActivity : DIAwareComponentActivity() {
     private fun maybeRequestSync() = lifecycleScope.launch {
         if (mainActivityViewModel.shouldSyncOnResume) {
             if (mainActivityViewModel.isOkToSyncAutomatically()) {
+                System.out.println("FOO - sync feed")
                 requestFeedSync(
                     di = di,
                     forceNetwork = false,
                 )
+            } else {
+                System.out.println("FOO - not ok to sync")
             }
+        } else {
+            System.out.println("FOO - don't sync on resume")
         }
     }
 

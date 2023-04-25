@@ -83,6 +83,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -130,6 +131,7 @@ import com.nononsenseapps.feeder.util.openLinkInBrowser
 import com.nononsenseapps.feeder.util.openLinkInCustomTab
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.greatfire.envoy.CronetNetworking
 import org.kodein.di.compose.LocalDI
 import org.kodein.di.instance
 import org.threeten.bp.Instant
@@ -559,6 +561,26 @@ fun FeedScreen(
                         },
                         text = {
                             Text(stringResource(id = R.string.action_settings))
+                        },
+                    )
+                    Divider()
+                    DropdownMenuItem(
+                        onClick = {
+                            // NO-OP
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painterResource(R.drawable.ic_anonymous_black_24dp),
+                                contentDescription = null,
+                            )
+                        },
+                        text = {
+                            if (CronetNetworking.cronetEngine() != null) {
+                                Text(stringResource(id = R.string.battery_optimization_enabled))
+                            } else {
+                                Text(stringResource(id = R.string.battery_optimization_disabled))
+
+                            }
                         },
                     )
                     Divider()

@@ -48,7 +48,6 @@ import okhttp3.Cache
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import org.conscrypt.Conscrypt
-import org.greatfire.envoy.CronetInterceptor
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.bind
@@ -117,6 +116,7 @@ class FeederApplication : Application(), DIAware, ImageLoaderFactory {
         bind<ImageLoader>() with singleton {
             val filePathProvider = instance<FilePathProvider>()
             val repository = instance<Repository>()
+            // This injected instance of OkHttpClient already includes CronetInterceptor
             val okHttpClient = instance<OkHttpClient>()
                 .newBuilder()
                 // This is not used by Coil but no need to risk evicting the real cache
@@ -140,9 +140,6 @@ class FeederApplication : Application(), DIAware, ImageLoaderFactory {
                         },
                     )
                 }
-                // this interceptor will be bypassed if no valid proxy urls were found at startup
-                // the app will connect to the internet directly if possible
-                .addInterceptor(CronetInterceptor())
                 .build()
 
             ImageLoader.Builder(instance())
