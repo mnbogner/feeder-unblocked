@@ -20,6 +20,7 @@ fun getFeederSyncClient(
 
     val retrofit = Retrofit.Builder()
         .client(
+            // this instance of OkHttpClient already includes a CronetInterceptor
             okHttpClient.newBuilder()
                 // Auth only used to prevent automatic scanning of the API
                 .addInterceptor { chain ->
@@ -42,9 +43,6 @@ fun getFeederSyncClient(
                     )
                     response
                 }
-                // this interceptor will be bypassed if no valid proxy urls were found at startup
-                // the app will connect to the internet directly if possible
-                .addInterceptor(CronetInterceptor())
                 .build(),
         )
         .baseUrl(URL(syncRemote.url, "/api/v1/"))

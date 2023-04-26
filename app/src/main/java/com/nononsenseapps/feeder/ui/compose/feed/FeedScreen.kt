@@ -575,6 +575,7 @@ fun FeedScreen(
                             )
                         },
                         text = {
+                            // reusing "on"/"off" strings which have already been translated
                             if (CronetNetworking.cronetEngine() != null) {
                                 Text(stringResource(id = R.string.battery_optimization_enabled))
                             } else {

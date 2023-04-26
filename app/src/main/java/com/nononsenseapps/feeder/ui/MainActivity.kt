@@ -49,47 +49,46 @@ class MainActivity : DIAwareComponentActivity() {
                 if (intent.action == ENVOY_BROADCAST_VALIDATION_SUCCEEDED) {
                     val validUrl = intent.getStringExtra(ENVOY_DATA_URL_SUCCEEDED)
                     if (validUrl.isNullOrEmpty()) {
-                        System.out.println("FOO - broadcastReceiver -> received a valid url that was empty or null")
+                        Log.w(LOG_TAG, "received a valid url that was empty or null")
                     } else if (waitingForEnvoy) {
                         // select the first valid url that is received (assumed to have the lowest latency)
                         waitingForEnvoy = false
                         if (DIRECT_URL.contains(validUrl)) {
-                            System.out.println("FOO - broadcastReceiver -> got direct url: " + validUrl + ", don't need to start engine")
+                            Log.d(LOG_TAG, "received a direct url, don't need to start engine")
                             // set flag so resuming activity doesn't trigger another envoy check
                             envoyUnused = true
                         } else {
-                            System.out.println("FOO - broadcastReceiver -> found a valid url: " + validUrl + ", start engine")
+                            Log.d(LOG_TAG, "received a valid url, start engine")
                             CronetNetworking.initializeCronetEngine(context, validUrl)
                         }
-                        // now that envoy has started (or not) sync (maybe)
+                        // after starting CronetEngine, sync feeds
                         maybeRequestSync()
                     } else {
-                        System.out.println("FOO - broadcastReceiver -> already selected a valid url, ignore valid url: " + validUrl)
+                        Log.d(LOG_TAG, "already selected a valid url, ignore additional urls")
                     }
                 } else if (intent.action == ENVOY_BROADCAST_VALIDATION_FAILED) {
                     val invalidUrl = intent.getStringExtra(ENVOY_DATA_URL_FAILED)
                     if (invalidUrl.isNullOrEmpty()) {
-                        System.out.println("FOO - broadcastReceiver -> received an invalid url that was empty or null")
+                        Log.w(LOG_TAG, "received an invalid url that was empty or null")
                     } else {
-                        System.out.println("FOO - broadcastReceiver -> got invalid url: " + invalidUrl)
+                        Log.w(LOG_TAG, "received an invalid url")
                     }
                 } else if (intent.action == ENVOY_BROADCAST_VALIDATION_ENDED) {
                     val cause = intent.getStringExtra(ENVOY_DATA_VALIDATION_ENDED_CAUSE)
                     if (cause.isNullOrEmpty()) {
-                        System.out.println("FOO - broadcastReceiver -> received an envoy validation ended broadcast with an invalid cause")
+                        Log.e(LOG_TAG, "received an envoy validation ended broadcast with an invalid cause")
                     } else {
-                        System.out.println("FOO - broadcastReceiver -> received an envoy validation ended broadcast with a cause: " + cause)
+                        Log.e(LOG_TAG, "received an envoy validation ended broadcast with a cause: " + cause)
                     }
                     // set flag so resuming activity doesn't trigger another envoy check
                     waitingForEnvoy = false
-                    // do we try to sync if envoy has failed?
+                    // TODO - if CronetEngine can't be started, do we attempt to sync feeds anyway?
                 } else {
-                    System.out.println("FOO - broadcastReceiver -> received unexpected intent: " + intent.action)
+                    Log.w(LOG_TAG, "received unexpected intent: " + intent.action)
                 }
             } else {
-                System.out.println("FOO - broadcastReceiver -> receiver triggered but context or intent was null")
+                Log.w(LOG_TAG, "receiver triggered but context or intent was null")
             }
-
         }
     }
 
@@ -97,7 +96,7 @@ class MainActivity : DIAwareComponentActivity() {
         super.onStart()
 
         // moved to start/stop to avoid an issue with registering multiple instances of the receiver when app is swiped away
-        System.out.println("FOO - onStart -> start/register broadcast receiver")
+        Log.d(LOG_TAG, "start/register broadcast receiver")
         // register to receive test results
         LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, IntentFilter().apply {
             addAction(ENVOY_BROADCAST_VALIDATION_SUCCEEDED)
@@ -112,7 +111,7 @@ class MainActivity : DIAwareComponentActivity() {
         notificationsWorker.stopForever()
 
         // moved to start/stop to avoid an issue with registering multiple instances of the receiver when app is swiped away
-        System.out.println("FOO - onStart -> stop/unregister broadcast receiver")
+        Log.d(LOG_TAG, "stop/unregister broadcast receiver")
         // unregister receiver for test results
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mBroadcastReceiver)
 
@@ -122,18 +121,16 @@ class MainActivity : DIAwareComponentActivity() {
     override fun onResume() {
         super.onResume()
 
-        System.out.println("FOO - onResume -> start envoy")
-
-        // start cronet here to prevent exception from starting a service when out of focus
+        // start envoy here to prevent exception from starting a service when out of focus
         if (envoyUnused) {
-            System.out.println("FOO - onResume -> direct connection previously worked, don't try to start envoy")
+            Log.w(LOG_TAG, "direct connection previously worked, don't try to start envoy")
         } else if (CronetNetworking.cronetEngine() != null) {
-            System.out.println("FOO - onResume -> cronet already running, don't try to start envoy again")
+            Log.w(LOG_TAG, "cronet already running, don't try to start envoy again")
         } else if (waitingForEnvoy) {
-            System.out.println("FOO - onResume -> already processing urls, don't try to start envoy again")
+            Log.w(LOG_TAG, "already processing urls, don't try to start envoy again")
         } else {
             // run envoy setup (fetches and validate urls)
-            System.out.println("FOO - onResume -> start envoy to process urls")
+            Log.d(LOG_TAG, "start envoy to process urls")
             waitingForEnvoy = true
             envoyInit()
         }
@@ -151,7 +148,7 @@ class MainActivity : DIAwareComponentActivity() {
 
         val urlSources = mutableListOf<String>()
 
-        System.out.println("FOO - envoyInit -> submit urls")
+        Log.d(LOG_TAG, "submit urls")
 
         NetworkIntentService.submit(
             this@MainActivity,
@@ -168,16 +165,16 @@ class MainActivity : DIAwareComponentActivity() {
     private fun maybeRequestSync() = lifecycleScope.launch {
         if (mainActivityViewModel.shouldSyncOnResume) {
             if (mainActivityViewModel.isOkToSyncAutomatically()) {
-                System.out.println("FOO - sync feed")
+                Log.d(LOG_TAG, "ok to sync feeds")
                 requestFeedSync(
                     di = di,
                     forceNetwork = false,
                 )
             } else {
-                System.out.println("FOO - not ok to sync")
+                Log.d(LOG_TAG, "not ok to sync feeds")
             }
         } else {
-            System.out.println("FOO - don't sync on resume")
+            Log.d(LOG_TAG, "don't sync feeds")
         }
     }
 

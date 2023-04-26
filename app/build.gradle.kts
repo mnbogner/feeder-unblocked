@@ -46,9 +46,7 @@ android {
         }
 
         packagingOptions {
-            // doNotStrip("**/libcronet*.so")
-            // jniLibs.keepDebugSymbols.add("**/libcronet*.so")
-            jniLibs.keepDebugSymbols.add("**/libsslocal.so")
+            // TODO - resolve issue with missing libsslocal library required for shadowsocks support
         }
     }
 
@@ -328,17 +326,14 @@ dependencies {
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
 
+    // use maven dependencies to build releases and support automation
+    implementation(libs.cronet)
+    implementation(libs.envoy)
+    implementation(libs.proxy)
     // switch to local files if needed to support development
-    implementation(files("libs/cronet-debug.aar"))
-    implementation(files("libs/envoy-debug.aar"))
+    // implementation(files("libs/cronet-debug.aar"))
+    // implementation(files("libs/envoy-debug.aar"))
     // implementation files('libs/IEnvoyProxy.aar')
-    // use maven dependencies to support automation
-    // implementation("org.greatfire.envoy:cronet:102.0.5005.195-4")
-    // implementation("org.greatfire:envoy:102.0.5005.195.2")
-    implementation("org.greatfire:IEnvoyProxy:1.3.1")
-    // implementation(libs.cronet)
-    // implementation(libs.envoy)
-    // implementation(libs.proxy)
 }
 
 fun getListOfSupportedLocales(): List<String> {

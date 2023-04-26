@@ -22,7 +22,7 @@ fun envoyHttpClient(
     readTimeoutSecs: Long = 30L
 ): OkHttpClient {
 
-    System.out.println("FOO - envoyHttpClient -> build okhttp client with cronet interceptor")
+    val LOG_TAG = "ENVOY_HTTP_CLIENT"
 
     val builder: OkHttpClient.Builder = OkHttpClient
         .Builder()
@@ -30,12 +30,10 @@ fun envoyHttpClient(
             // data sources are bound at startup with this instance of OkHttpClient so
             // we need an interceptor to block connections until CronetEngine is ready
             if (CronetNetworking.cronetEngine() == null) {
-                System.out.println("FOO - no envoy so intercept and return error")
-                Log.d("FOO2", "no envoy so intercept and return error")
-                throw IOException("oops")
+                Log.w(LOG_TAG, "CronetEngine has not been initialized, intercept and throw exception")
+                throw IOException("CronetEngine has not been initialized")
             } else {
-                System.out.println("FOO - envoy running so pass through")
-                Log.d("FOO2", "envoy running so pass through")
+                Log.d(LOG_TAG, "CronetEngine has been initialized, intercept and proceed")
                 chain.proceed(chain.request())
             }
         }
