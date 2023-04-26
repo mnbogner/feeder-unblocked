@@ -110,7 +110,6 @@ class FeederApplication : Application(), DIAware, ImageLoaderFactory {
                 .addNetworkInterceptor(UserAgentInterceptor)
                 .build()
         }
-
         bind<ImageLoader>() with singleton {
             val filePathProvider = instance<FilePathProvider>()
             val repository = instance<Repository>()
