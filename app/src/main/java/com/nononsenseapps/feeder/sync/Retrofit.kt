@@ -5,7 +5,6 @@ import com.nononsenseapps.feeder.db.room.SyncRemote
 import java.net.URL
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
-import org.greatfire.envoy.CronetInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.create
@@ -16,10 +15,9 @@ fun getFeederSyncClient(
 ): FeederSync {
     val moshi = getMoshi()
 
-    System.out.println("FOO - getFeederSyncClient -> build retrofit client with cronet interceptor")
-
     val retrofit = Retrofit.Builder()
         .client(
+            // this instance of OkHttpClient already includes a CronetInterceptor
             okHttpClient.newBuilder()
                 .addInterceptor { chain ->
                     Log.d("FEEDER", "RETROFIT FEED PARSER CLIENT")
@@ -46,9 +44,6 @@ fun getFeederSyncClient(
                     )
                     response
                 }
-                // this interceptor will be bypassed if no valid proxy urls were found at startup
-                // the app will connect to the internet directly if possible
-                // .addInterceptor(CronetInterceptor())
                 .build(),
         )
         .baseUrl(URL(syncRemote.url, "/api/v1/"))

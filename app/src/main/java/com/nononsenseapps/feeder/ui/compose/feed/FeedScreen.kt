@@ -570,11 +570,12 @@ fun FeedScreen(
                         },
                         leadingIcon = {
                             Icon(
-                                Icons.Default.Settings,
+                                painterResource(R.drawable.ic_anonymous_black_24dp),
                                 contentDescription = null,
                             )
                         },
                         text = {
+                            // reusing "on"/"off" strings which have already been translated
                             if (CronetNetworking.cronetEngine() != null) {
                                 Text(stringResource(id = R.string.battery_optimization_enabled))
                             } else {

@@ -7,7 +7,6 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import okhttp3.Cache
-import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.ResponseBody
@@ -20,13 +19,13 @@ fun cachingHttpClient(
     readTimeoutSecs: Long = 30L
 ): OkHttpClient {
 
-    System.out.println("FOO - cachingHttpClient -> client should not init")
+    val LOG_TAG = "CACHING_HTTP_CLIENT"
 
     val builder: OkHttpClient.Builder = OkHttpClient
         .Builder()
-        // TEMP
+        // TODO - remove logging after additional testing
         .addInterceptor { chain ->
-            System.out.println("FOO - cachingHttpClient -> client should not be used")
+            System.err.println(LOG_TAG + " - old http client, should not be used")
             chain.proceed(chain.request())
         }
 

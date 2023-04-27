@@ -18,7 +18,7 @@ import org.kodein.di.singleton
 val networkModule = DI.Module(name = "network") {
     // Parsers can carry state so safer to use providers
     bind<JsonAdapter<Feed>>() with provider { feedAdapter() }
-    // ENVOY INTEGRATION
+    // this parser includes a custom OkHttpClient with a CronetInterceptor to support Envoy
     bind<EnvoyFeedParser>() with provider { EnvoyFeedParser(instance<OkHttpClient>(), instance()) }
     bind<FeedParser>() with provider { FeedParser(di) }
     // These don't have state issues

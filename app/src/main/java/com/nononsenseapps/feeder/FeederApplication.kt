@@ -103,7 +103,7 @@ class FeederApplication : Application(), DIAware, ImageLoaderFactory {
 
         bind<OkHttpClient>() with singleton {
             val filePathProvider = instance<FilePathProvider>()
-            // ENVOY INTEGRATION
+            // this custom OkHttpClient includes a CronetInterceptor to support Envoy
             envoyHttpClient(
                 cacheDirectory = (filePathProvider.httpCacheDir),
             ).newBuilder()
@@ -111,12 +111,10 @@ class FeederApplication : Application(), DIAware, ImageLoaderFactory {
                 .build()
         }
 
-        System.out.println("FOO - DI.lazy -> build okhttp client with cronet interceptor")
-
         bind<ImageLoader>() with singleton {
             val filePathProvider = instance<FilePathProvider>()
             val repository = instance<Repository>()
-            // This injected instance of OkHttpClient already includes CronetInterceptor
+            // this instance of OkHttpClient already includes a CronetInterceptor
             val okHttpClient = instance<OkHttpClient>()
                 .newBuilder()
                 // This is not used by Coil but no need to risk evicting the real cache
@@ -198,9 +196,6 @@ class FeederApplication : Application(), DIAware, ImageLoaderFactory {
     }
 
     override fun newImageLoader(): ImageLoader {
-
-        System.out.println("FOO - newImageLoader -> run?")
-
         return di.direct.instance()
     }
 }

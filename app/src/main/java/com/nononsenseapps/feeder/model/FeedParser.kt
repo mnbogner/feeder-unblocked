@@ -35,7 +35,7 @@ private const val YOUTUBE_CHANNEL_ID_ATTR = "data-channel-external-id"
 
 class FeedParser(override val di: DI) : DIAware {
     private val client: OkHttpClient by instance()
-    // ENVOY INTEGRATION
+    // this parser includes a custom OkHttpClient with a CronetInterceptor to support Envoy
     private val envoyFeedParser: EnvoyFeedParser by instance()
 
     /**
