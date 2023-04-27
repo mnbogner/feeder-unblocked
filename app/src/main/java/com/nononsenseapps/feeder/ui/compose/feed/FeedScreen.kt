@@ -570,7 +570,7 @@ fun FeedScreen(
                         },
                         leadingIcon = {
                             Icon(
-                                painterResource(R.drawable.ic_anonymous_black_24dp),
+                                Icons.Default.Settings,
                                 contentDescription = null,
                             )
                         },

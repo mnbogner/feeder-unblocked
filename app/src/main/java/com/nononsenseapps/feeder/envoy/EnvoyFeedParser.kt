@@ -27,15 +27,19 @@ fun envoyHttpClient(
     val builder: OkHttpClient.Builder = OkHttpClient
         .Builder()
         .addInterceptor { chain ->
+            Log.d("FEEDER", "ENVOY FEED PARSER CLIENT")
+            chain.proceed(chain.request())
+        }
+        .addInterceptor { chain ->
             // data sources are bound at startup with this instance of OkHttpClient so
             // we need an interceptor to block connections until CronetEngine is ready
             if (CronetNetworking.cronetEngine() == null) {
-                System.out.println("FOO - no envoy so intercept and return error")
-                Log.d("FOO2", "no envoy so intercept and return error")
+                System.out.println("FEEDER - no envoy so intercept and return error")
+                Log.d("FEEDER", "no envoy so intercept and return error")
                 throw IOException("oops")
             } else {
-                System.out.println("FOO - envoy running so pass through")
-                Log.d("FOO2", "envoy running so pass through")
+                System.out.println("FEEDER - envoy running so pass through")
+                Log.d("FEEDER", "envoy running so pass through")
                 chain.proceed(chain.request())
             }
         }

@@ -36,7 +36,7 @@ private const val YOUTUBE_CHANNEL_ID_ATTR = "data-channel-external-id"
 class FeedParser(override val di: DI) : DIAware {
     private val client: OkHttpClient by instance()
     // ENVOY INTEGRATION
-    private val jsonFeedParser: EnvoyFeedParser by instance()
+    private val envoyFeedParser: EnvoyFeedParser by instance()
 
     /**
      * Finds the preferred alternate link in the header of an HTML/XML document pointing to feeds.
@@ -230,7 +230,7 @@ class FeedParser(override val di: DI) : DIAware {
     ): Feed {
         try {
             val feed = when (responseBody.contentType()?.subtype?.contains("json")) {
-                true -> jsonFeedParser.parseJson(responseBody)
+                true -> envoyFeedParser.parseJson(responseBody)
                 else -> parseRssAtom(url, responseBody)
             }
 
@@ -256,7 +256,7 @@ class FeedParser(override val di: DI) : DIAware {
     ): Feed {
         try {
             val feed = when (contentType?.subtype?.contains("json")) {
-                true -> jsonFeedParser.parseJson(body)
+                true -> envoyFeedParser.parseJson(body)
                 else -> parseRssAtom(url, body)
             }
 

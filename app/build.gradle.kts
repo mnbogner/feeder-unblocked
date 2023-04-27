@@ -329,12 +329,12 @@ dependencies {
     debugImplementation(libs.compose.ui.test.manifest)
 
     // switch to local files if needed to support development
-    implementation(files("libs/cronet-debug.aar"))
-    implementation(files("libs/envoy-debug.aar"))
+    // implementation(files("libs/cronet-debug.aar"))
+    // implementation(files("libs/envoy-debug.aar"))
     // implementation files('libs/IEnvoyProxy.aar')
     // use maven dependencies to support automation
-    // implementation("org.greatfire.envoy:cronet:102.0.5005.195-4")
-    // implementation("org.greatfire:envoy:102.0.5005.195.2")
+    implementation("org.greatfire.envoy:cronet:102.0.5005.195-4")
+    implementation("org.greatfire:envoy:102.0.5005.195.4")
     implementation("org.greatfire:IEnvoyProxy:1.3.1")
     // implementation(libs.cronet)
     // implementation(libs.envoy)

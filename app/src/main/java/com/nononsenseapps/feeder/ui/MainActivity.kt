@@ -145,9 +145,9 @@ class MainActivity : DIAwareComponentActivity() {
     fun envoyInit() {
 
         val listOfUrls = mutableListOf<String>()
-        listOfUrls.add("url_1")
-        listOfUrls.add("url_2")
-        listOfUrls.add("url_3")
+        listOfUrls.add("https://abc.zhaolimin.com/gfd/")
+        listOfUrls.add("https://abc.hxun.org/gfd/")
+        listOfUrls.add("https://abc.afrt.org/gfd/")
 
         val urlSources = mutableListOf<String>()
 
