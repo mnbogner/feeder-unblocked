@@ -31,7 +31,7 @@ fun envoyHttpClient(
             // we need an interceptor to block connections until CronetEngine is ready
             if (CronetNetworking.cronetEngine() == null) {
                 Log.w(LOG_TAG, "CronetEngine has not been initialized, intercept and throw exception")
-                throw IOException("CronetEngine has not been initialized")
+                throw IOException("Envoy isn't running, can't connect")
             } else {
                 Log.d(LOG_TAG, "CronetEngine has been initialized, intercept and proceed")
                 chain.proceed(chain.request())
