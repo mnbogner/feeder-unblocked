@@ -22,8 +22,8 @@ android {
     namespace = "com.nononsenseapps.feeder"
     defaultConfig {
         applicationId = "com.nononsenseapps.feeder"
-        versionCode = 10274
-        versionName = "2.4.12.00"
+        versionCode = 10277
+        versionName = "2.4.15.00"
         compileSdk = 33
         minSdk = 23
         targetSdk = 33
@@ -236,6 +236,7 @@ dependencies {
     implementation(libs.androidx.preference)
 
     // ViewModel
+    implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.viewmodel.ktx)
     implementation(libs.lifecycle.viewmodel.savedstate)

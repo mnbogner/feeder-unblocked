@@ -76,9 +76,10 @@ fun SwipeableFeedItemPreview(
     showThumbnail: Boolean,
     feedItemStyle: FeedItemStyle,
     swipeAsRead: SwipeAsRead,
+    newIndicator: Boolean,
+    bookmarkIndicator: Boolean,
     onMarkAboveAsRead: () -> Unit,
     onMarkBelowAsRead: () -> Unit,
-    onTogglePinned: () -> Unit,
     onToggleBookmarked: () -> Unit,
     onShareItem: () -> Unit,
     modifier: Modifier = Modifier,
@@ -128,10 +129,8 @@ fun SwipeableFeedItemPreview(
     }
 
     val toggleReadStatusLabel = stringResource(R.string.toggle_read_status)
-    val pinArticleLabel = stringResource(R.string.pin_article)
-    val unpinArticleLabel = stringResource(R.string.unpin_article)
-    val bookmarkArticleLabel = stringResource(R.string.bookmark_article)
-    val removeBookmarkLabel = stringResource(R.string.remove_bookmark)
+    val saveArticleLabel = stringResource(R.string.save_article)
+    val unSaveArticleLabel = stringResource(R.string.unsave_article)
     val markAboveAsReadLabel = stringResource(R.string.mark_items_above_as_read)
     val markBelowAsReadLabel = stringResource(R.string.mark_items_below_as_read)
     val shareLabel = stringResource(R.string.share)
@@ -170,18 +169,9 @@ fun SwipeableFeedItemPreview(
                             true
                         },
                         CustomAccessibilityAction(
-                            when (item.pinned) {
-                                true -> unpinArticleLabel
-                                false -> pinArticleLabel
-                            },
-                        ) {
-                            onTogglePinned()
-                            true
-                        },
-                        CustomAccessibilityAction(
                             when (item.bookmarked) {
-                                true -> removeBookmarkLabel
-                                false -> bookmarkArticleLabel
+                                true -> unSaveArticleLabel
+                                false -> saveArticleLabel
                             },
                         ) {
                             onToggleBookmarked()
@@ -252,11 +242,11 @@ fun SwipeableFeedItemPreview(
                     onMarkAboveAsRead = onMarkAboveAsRead,
                     onMarkBelowAsRead = onMarkBelowAsRead,
                     onShareItem = onShareItem,
-                    onTogglePinned = onTogglePinned,
                     onToggleBookmarked = onToggleBookmarked,
                     dropDownMenuExpanded = dropDownMenuExpanded,
                     onDismissDropdown = { dropDownMenuExpanded = false },
-                    newIndicator = true,
+                    newIndicator = newIndicator,
+                    bookmarkIndicator = bookmarkIndicator,
                     modifier = Modifier
                         .offset { IntOffset(swipeableState.offset.value.roundToInt(), 0) }
                         .graphicsLayer(alpha = itemAlpha),
@@ -269,11 +259,11 @@ fun SwipeableFeedItemPreview(
                     onMarkAboveAsRead = onMarkAboveAsRead,
                     onMarkBelowAsRead = onMarkBelowAsRead,
                     onShareItem = onShareItem,
-                    onTogglePinned = onTogglePinned,
                     onToggleBookmarked = onToggleBookmarked,
                     dropDownMenuExpanded = dropDownMenuExpanded,
                     onDismissDropdown = { dropDownMenuExpanded = false },
                     newIndicator = false,
+                    bookmarkIndicator = bookmarkIndicator,
                     modifier = Modifier
                         .offset { IntOffset(swipeableState.offset.value.roundToInt(), 0) }
                         .graphicsLayer(alpha = itemAlpha),
@@ -286,11 +276,11 @@ fun SwipeableFeedItemPreview(
                     onMarkAboveAsRead = onMarkAboveAsRead,
                     onMarkBelowAsRead = onMarkBelowAsRead,
                     onShareItem = onShareItem,
-                    onTogglePinned = onTogglePinned,
                     onToggleBookmarked = onToggleBookmarked,
                     dropDownMenuExpanded = dropDownMenuExpanded,
                     onDismissDropdown = { dropDownMenuExpanded = false },
                     newIndicator = false,
+                    bookmarkIndicator = bookmarkIndicator,
                     modifier = Modifier
                         .offset { IntOffset(swipeableState.offset.value.roundToInt(), 0) }
                         .graphicsLayer(alpha = itemAlpha),
@@ -301,7 +291,7 @@ fun SwipeableFeedItemPreview(
         // This box handles swiping - it uses padding to allow the nav drawer to still be dragged
         // It's very important that clickable stuff is handled by its parent - or a direct child
         // Wrapped in an outer box to get the height set properly
-        if (swipeAsRead != SwipeAsRead.DISABLED && !item.pinned) {
+        if (swipeAsRead != SwipeAsRead.DISABLED) {
             Box(
                 modifier = Modifier
                     .matchParentSize(),

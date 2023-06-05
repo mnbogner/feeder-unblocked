@@ -128,9 +128,7 @@
     <string name="secret_key">Chave secreta</string>
     <string name="swipe_to_mark_as_read">Deslice para marcar como lido</string>
     <string name="no_barcode_scanner_installed">O código de barras non se puído encontrar</string>
-    <string name="pin_article">Prender artigo</string>
-    <string name="unpin_article">Desprender artigo</string>
-    <string name="navigation_drawer_open">Abrir caixón de navegación</string>
+  <string name="navigation_drawer_open">Abrir caixón de navegación</string>
     <string name="title">Título</string>
     <string name="empty_feed_add"><annotation style="link">Engadir</annotation> máis canles\?</string>
     <string name="open_in_browser">Abrir no navegador</string>
@@ -172,11 +170,7 @@
     <string name="only_from_end">Só dende o final</string>
     <string name="are_you_sure_leave_sync_chain">Está seguro de querer abandonar a cadea de sincronización\?</string>
     <string name="open_enclosed_media">Abrir audiovisuales incluídos</string>
-    <string name="showing_only_bookmarked_articles">Amosar só os artigos marcados</string>
-    <string name="bookmarks_filter">Só marcadores</string>
-    <string name="bookmark_article">Artigo marcado</string>
-    <string name="remove_bookmark">Borrar marcador</string>
-    <string name="permission_read_desc">Permirtir á aplicación ler fontes e artigos</string>
+  <string name="permission_read_desc">Permirtir á aplicación ler fontes e artigos</string>
     <string name="permission_read_label">Acceso de só lectura</string>
     <string name="skip_to_next">Saltar ao seguinte</string>
     <string name="use_detect_language">Detectar lingua</string>
@@ -185,9 +179,7 @@
     <string name="text_to_speech">Texto a voz</string>
     <string name="set_language">Estabelecer lingua</string>
     <string name="dynamic_theme_use">Cores dinámicos</string>
-    <string name="pinned">Prendido</string>
-    <string name="bookmarked">Marcado</string>
-    <string name="new_indicator">Novo</string>
+  <string name="new_indicator">Novo</string>
     <string name="explanation_permission_notifications">Debe concederse o permiso antes de que se poidan activalas notificacións.</string>
     <string name="feed_icon">Icona da canle</string>
     <string name="article_image">Imaxe do artigo</string>

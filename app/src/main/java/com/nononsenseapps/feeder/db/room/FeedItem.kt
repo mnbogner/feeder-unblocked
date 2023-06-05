@@ -3,7 +3,6 @@ package com.nononsenseapps.feeder.db.room
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.ForeignKey.CASCADE
 import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -18,7 +17,6 @@ import com.nononsenseapps.feeder.db.COL_ID
 import com.nononsenseapps.feeder.db.COL_IMAGEURL
 import com.nononsenseapps.feeder.db.COL_LINK
 import com.nononsenseapps.feeder.db.COL_NOTIFIED
-import com.nononsenseapps.feeder.db.COL_PINNED
 import com.nononsenseapps.feeder.db.COL_PLAINSNIPPET
 import com.nononsenseapps.feeder.db.COL_PLAINTITLE
 import com.nononsenseapps.feeder.db.COL_PRIMARYSORTTIME
@@ -44,13 +42,18 @@ const val MAX_SNIPPET_LENGTH = 200
     indices = [
         Index(value = [COL_GUID, COL_FEEDID], unique = true),
         Index(value = [COL_FEEDID]),
+        Index(
+            name = "idx_feed_items_cursor",
+            value = [COL_PRIMARYSORTTIME, COL_PUBDATE, COL_ID],
+            unique = true,
+        ),
     ],
     foreignKeys = [
         ForeignKey(
             entity = Feed::class,
             parentColumns = [COL_ID],
             childColumns = [COL_FEEDID],
-            onDelete = CASCADE,
+            onDelete = ForeignKey.CASCADE,
         ),
     ],
 )
@@ -67,17 +70,19 @@ data class FeedItem @Ignore constructor(
     @ColumnInfo(name = COL_IMAGEURL) var imageUrl: String? = null,
     @ColumnInfo(name = COL_ENCLOSURELINK) var enclosureLink: String? = null,
     @ColumnInfo(name = COL_AUTHOR) var author: String? = null,
-    @ColumnInfo(name = COL_PUBDATE, typeAffinity = ColumnInfo.TEXT) var pubDate: ZonedDateTime? = null,
+    @ColumnInfo(name = COL_PUBDATE, typeAffinity = ColumnInfo.TEXT) override var pubDate: ZonedDateTime? = null,
     @ColumnInfo(name = COL_LINK) override var link: String? = null,
     @ColumnInfo(name = COL_UNREAD) var unread: Boolean = true,
     @ColumnInfo(name = COL_NOTIFIED) var notified: Boolean = false,
     @ColumnInfo(name = COL_FEEDID) var feedId: Long? = null,
     @ColumnInfo(name = COL_FIRSTSYNCEDTIME, typeAffinity = ColumnInfo.INTEGER) var firstSyncedTime: Instant = Instant.EPOCH,
-    @ColumnInfo(name = COL_PRIMARYSORTTIME, typeAffinity = ColumnInfo.INTEGER) var primarySortTime: Instant = Instant.EPOCH,
-    @ColumnInfo(name = COL_PINNED) var pinned: Boolean = false,
+    @ColumnInfo(name = COL_PRIMARYSORTTIME, typeAffinity = ColumnInfo.INTEGER) override var primarySortTime: Instant = Instant.EPOCH,
+    @Deprecated("This column has been 'removed' but sqlite doesn't support drop column.")
+    @ColumnInfo(name = "pinned")
+    var pinned: Boolean = false,
     @ColumnInfo(name = COL_BOOKMARKED) var bookmarked: Boolean = false,
     @ColumnInfo(name = COL_FULLTEXT_DOWNLOADED) var fullTextDownloaded: Boolean = false,
-) : FeedItemForFetching {
+) : FeedItemForFetching, FeedItemCursor {
 
     constructor() : this(id = ID_UNSET)
 
@@ -155,4 +160,10 @@ data class FeedItem @Ignore constructor(
 interface FeedItemForFetching {
     val id: Long
     val link: String?
+}
+
+interface FeedItemCursor {
+    val primarySortTime: Instant
+    val pubDate: ZonedDateTime?
+    val id: Long
 }

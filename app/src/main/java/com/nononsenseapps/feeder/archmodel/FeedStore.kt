@@ -2,9 +2,9 @@ package com.nononsenseapps.feeder.archmodel
 
 import com.nononsenseapps.feeder.db.room.Feed
 import com.nononsenseapps.feeder.db.room.FeedDao
+import com.nononsenseapps.feeder.db.room.FeedForSettings
 import com.nononsenseapps.feeder.db.room.FeedTitle
 import com.nononsenseapps.feeder.db.room.ID_UNSET
-import com.nononsenseapps.feeder.db.room.upsertFeed
 import com.nononsenseapps.feeder.model.FeedUnreadCount
 import com.nononsenseapps.feeder.ui.compose.navdrawer.DrawerFeed
 import com.nononsenseapps.feeder.ui.compose.navdrawer.DrawerItemWithUnreadCount
@@ -48,6 +48,9 @@ class FeedStore(override val di: DI) : DIAware {
         }
     }
 
+    suspend fun toggleNotifications(feedId: Long, value: Boolean) =
+        feedDao.setNotify(id = feedId, notify = value)
+
     suspend fun getDisplayTitle(feedId: Long): String? =
         feedDao.getFeedTitle(feedId)?.displayTitle
 
@@ -56,6 +59,8 @@ class FeedStore(override val di: DI) : DIAware {
     }
 
     val allTags: Flow<List<String>> = feedDao.loadAllTags()
+
+    val feedForSettings: Flow<List<FeedForSettings>> = feedDao.loadFlowOfFeedsForSettings()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val drawerItemsWithUnreadCounts: Flow<List<DrawerItemWithUnreadCount>> =
@@ -125,7 +130,7 @@ class FeedStore(override val di: DI) : DIAware {
     }
 
     suspend fun upsertFeed(feedSql: Feed) =
-        feedDao.upsertFeed(feed = feedSql)
+        feedDao.upsert(feed = feedSql)
 
     suspend fun getFeedsOrderedByUrl(): List<Feed> {
         return feedDao.getFeedsOrderedByUrl()
