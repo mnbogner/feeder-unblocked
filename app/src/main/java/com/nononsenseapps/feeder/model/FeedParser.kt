@@ -95,6 +95,7 @@ class FeedParser(override val di: DI) : DIAware {
                         base = baseUrl,
                         link = e.attr("href"),
                     )
+
                     else -> sloppyLinkToStrictURLOrNull(e.attr("href"))?.toString()
                 }
             }
@@ -156,6 +157,7 @@ class FeedParser(override val di: DI) : DIAware {
                         base = baseUrl,
                         link = e.attr("href"),
                     ) to e.attr("type")
+
                     else -> sloppyLinkToStrictURLOrNull(e.attr("href"))?.let { l ->
                         l.toString() to e.attr(
                             "type",
@@ -169,6 +171,7 @@ class FeedParser(override val di: DI) : DIAware {
             baseUrl?.host == "www.youtube.com" || baseUrl?.host == "youtube.com" -> findFeedLinksForYoutube(
                 doc,
             )
+
             else -> emptyList()
         }
     }
@@ -292,12 +295,19 @@ class FeedParser(override val di: DI) : DIAware {
         try {
             val contentType = responseBody.contentType()
             val validMimeType = when (contentType?.type) {
-                "application", "text" -> {
+                "application" -> {
                     when {
                         contentType.subtype.contains("xml") -> true
                         else -> false
                     }
                 }
+
+                "text" -> {
+                    // So many sites on the internet return mimetype text/html for rss feeds...
+                    // So try to parse it despite it being wrong
+                    true
+                }
+
                 else -> false
             }
             if (!validMimeType) {
@@ -379,6 +389,7 @@ suspend fun OkHttpClient.getResponse(url: URL, forceNetwork: Boolean = false): R
                     response.request.header("Authorization") != null -> {
                         null
                     }
+
                     else -> {
                         response.request.newBuilder()
                             .header("Authorization", credentials)
@@ -391,6 +402,7 @@ suspend fun OkHttpClient.getResponse(url: URL, forceNetwork: Boolean = false): R
                     response.request.header("Proxy-Authorization") != null -> {
                         null
                     }
+
                     else -> {
                         response.request.newBuilder()
                             .header("Proxy-Authorization", credentials)
@@ -419,6 +431,7 @@ suspend fun OkHttpClient.curl(url: URL): String? {
                     else -> null
                 }
             }
+
             else -> null
         }
     }

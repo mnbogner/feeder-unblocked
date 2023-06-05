@@ -1,6 +1,7 @@
 package com.nononsenseapps.feeder.ui.compose.feed
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -37,12 +38,9 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.IconToggleButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkRemove
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Edit
@@ -62,14 +60,15 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltipBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -82,18 +81,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.nononsenseapps.feeder.ApplicationCoroutineScope
 import com.nononsenseapps.feeder.R
 import com.nononsenseapps.feeder.archmodel.FeedItemStyle
+import com.nononsenseapps.feeder.archmodel.FeedType
+import com.nononsenseapps.feeder.db.room.FeedItemCursor
+import com.nononsenseapps.feeder.db.room.ID_SAVED_ARTICLES
 import com.nononsenseapps.feeder.db.room.ID_UNSET
 import com.nononsenseapps.feeder.model.LocaleOverride
 import com.nononsenseapps.feeder.model.opml.exportOpml
@@ -125,10 +130,14 @@ import com.nononsenseapps.feeder.ui.compose.utils.LocalWindowSize
 import com.nononsenseapps.feeder.ui.compose.utils.WindowSize
 import com.nononsenseapps.feeder.ui.compose.utils.addMargin
 import com.nononsenseapps.feeder.ui.compose.utils.addMarginLayout
+import com.nononsenseapps.feeder.ui.compose.utils.rememberIsItemMostlyVisible
+import com.nononsenseapps.feeder.ui.compose.utils.rememberIsItemVisible
 import com.nononsenseapps.feeder.util.emailBugReportIntent
 import com.nononsenseapps.feeder.util.logDebug
 import com.nononsenseapps.feeder.util.openLinkInBrowser
 import com.nononsenseapps.feeder.util.openLinkInCustomTab
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.greatfire.envoy.CronetNetworking
@@ -145,7 +154,7 @@ fun FeedScreen(
     navController: NavController,
     viewModel: FeedArticleViewModel,
 ) {
-    val viewState: FeedArticleScreenViewState by viewModel.viewState.collectAsState()
+    val viewState: FeedArticleScreenViewState by viewModel.viewState.collectAsStateWithLifecycle()
     val pagedFeedItems = viewModel.currentFeedListItems.collectAsLazyPagingItems()
 
     val di = LocalDI.current
@@ -185,12 +194,23 @@ fun FeedScreen(
     val toolbarColor = MaterialTheme.colorScheme.surface.toArgb()
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-
     val coroutineScope = rememberCoroutineScope()
+
+    BackHandler(
+        enabled = drawerState.isOpen,
+        onBack = {
+            if (drawerState.isOpen) {
+                coroutineScope.launch {
+                    drawerState.close()
+                }
+            }
+        },
+    )
 
     ScreenWithNavDrawer(
         feedsAndTags = ImmutableHolder(viewState.drawerItemsWithUnreadCounts),
         expandedTags = ImmutableHolder(viewState.expandedTags),
+        unreadBookmarksCount = viewState.unreadBookmarksCount,
         onToggleTagExpansion = { tag ->
             viewModel.toggleTagExpansion(tag)
         },
@@ -201,7 +221,6 @@ fun FeedScreen(
     ) {
         FeedScreen(
             viewState = viewState,
-            drawerState = drawerState,
             onRefreshVisible = {
                 viewModel.requestImmediateSyncOfCurrentFeedOrTag()
             },
@@ -218,9 +237,6 @@ fun FeedScreen(
             },
             onToggleOnlyUnread = { value ->
                 viewModel.setShowOnlyUnread(value)
-            },
-            onToggleOnlyBookmarked = { value ->
-                viewModel.setShowOnlyBookmarked(value)
             },
             onMarkAllAsRead = {
                 viewModel.markAllAsRead()
@@ -269,18 +285,19 @@ fun FeedScreen(
                 )
             },
             onExport = { opmlExporter.launch("feeder-export-${LocalDateTime.now()}.opml") },
-            markAsUnread = { itemId, unread ->
+            drawerState = drawerState,
+            markAsUnread = { itemId, unread, feedOrTag ->
                 if (unread) {
                     viewModel.markAsUnread(itemId)
                 } else {
-                    viewModel.markAsRead(itemId)
+                    viewModel.markAsRead(itemId, feedOrTag)
                 }
             },
-            markBeforeAsRead = { index ->
-                viewModel.markBeforeAsRead(index)
+            markBeforeAsRead = { cursor ->
+                viewModel.markBeforeAsRead(cursor)
             },
-            markAfterAsRead = { index ->
-                viewModel.markAfterAsRead(index)
+            markAfterAsRead = { cursor ->
+                viewModel.markAfterAsRead(cursor)
             },
             onOpenFeedItem = { itemId ->
                 viewModel.openArticle(
@@ -295,9 +312,6 @@ fun FeedScreen(
                         ArticleDestination.navigate(navController, itemId)
                     },
                 )
-            },
-            onSetPinned = { itemId, value ->
-                viewModel.setPinned(itemId, value)
             },
             onSetBookmarked = { itemId, value ->
                 viewModel.setBookmarked(itemId, value)
@@ -316,7 +330,6 @@ fun FeedScreen(
     onRefreshVisible: () -> Unit,
     onRefreshAll: () -> Unit,
     onToggleOnlyUnread: (Boolean) -> Unit,
-    onToggleOnlyBookmarked: (Boolean) -> Unit,
     onMarkAllAsRead: () -> Unit,
     onShowToolbarMenu: (Boolean) -> Unit,
     ttsOnPlay: () -> Unit,
@@ -336,11 +349,10 @@ fun FeedScreen(
     onImport: () -> Unit,
     onExport: () -> Unit,
     drawerState: DrawerState,
-    markAsUnread: (Long, Boolean) -> Unit,
-    markBeforeAsRead: (Int) -> Unit,
-    markAfterAsRead: (Int) -> Unit,
+    markAsUnread: (Long, Boolean, FeedOrTag?) -> Unit,
+    markBeforeAsRead: (FeedItemCursor) -> Unit,
+    markAfterAsRead: (FeedItemCursor) -> Unit,
     onOpenFeedItem: (Long) -> Unit,
-    onSetPinned: (Long, Boolean) -> Unit,
     onSetBookmarked: (Long, Boolean) -> Unit,
     feedListState: LazyListState,
     feedGridState: LazyStaggeredGridState,
@@ -349,12 +361,6 @@ fun FeedScreen(
 ) {
     val showingUnreadStateLabel = if (viewState.onlyUnread) {
         stringResource(R.string.showing_only_unread_articles)
-    } else {
-        stringResource(R.string.showing_all_articles)
-    }
-
-    val showingBookmarksStateLabel = if (viewState.onlyBookmarked) {
-        stringResource(R.string.showing_only_bookmarked_articles)
     } else {
         stringResource(R.string.showing_all_articles)
     }
@@ -385,221 +391,213 @@ fun FeedScreen(
         onDelete = onDeleteFeeds,
         onEditFeed = onEditFeed,
         toolbarActions = {
-            IconToggleButton(
-                checked = viewState.onlyUnread,
-                onCheckedChange = onToggleOnlyUnread,
-                modifier = Modifier.semantics {
-                    stateDescription = showingUnreadStateLabel
-                },
-            ) {
-                if (viewState.onlyUnread) {
-                    Icon(
-                        Icons.Default.VisibilityOff,
-                        contentDescription = null,
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.Visibility,
-                        contentDescription = null,
-                    )
-                }
-            }
-            IconToggleButton(
-                checked = viewState.onlyBookmarked,
-                onCheckedChange = onToggleOnlyBookmarked,
-                modifier = Modifier.semantics {
-                    stateDescription = showingBookmarksStateLabel
-                },
-            ) {
-                if (viewState.onlyBookmarked) {
-                    Icon(
-                        Icons.Default.BookmarkRemove,
-                        contentDescription = null,
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.Bookmark,
-                        contentDescription = null,
-                    )
+            if (viewState.currentFeedOrTag.isNotSavedArticles) {
+                PlainTooltipBox(tooltip = { Text(showingUnreadStateLabel) }) {
+                    IconToggleButton(
+                        checked = viewState.onlyUnread,
+                        onCheckedChange = onToggleOnlyUnread,
+                        modifier = Modifier
+                            .tooltipAnchor()
+                            .semantics {
+                                stateDescription = showingUnreadStateLabel
+                            },
+                    ) {
+                        if (viewState.onlyUnread) {
+                            Icon(
+                                Icons.Default.VisibilityOff,
+                                contentDescription = null,
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Visibility,
+                                contentDescription = null,
+                            )
+                        }
+                    }
                 }
             }
 
-            Box {
-                IconButton(onClick = { onShowToolbarMenu(true) }) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = stringResource(R.string.open_menu),
-                    )
-                }
-                DropdownMenu(
-                    expanded = viewState.showToolbarMenu,
-                    onDismissRequest = { onShowToolbarMenu(false) },
-                ) {
-                    DropdownMenuItem(
-                        onClick = {
-                            onMarkAllAsRead()
-                            onShowToolbarMenu(false)
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.DoneAll,
-                                contentDescription = null,
-                            )
-                        },
-                        text = {
-                            Text(stringResource(id = R.string.mark_all_as_read))
-                        },
-                    )
-                    Divider()
-                    DropdownMenuItem(
-                        onClick = {
-                            onRefreshAll()
-                            onShowToolbarMenu(false)
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Refresh,
-                                contentDescription = stringResource(R.string.synchronize_feeds),
-                            )
-                        },
-                        text = {
-                            Text(stringResource(id = R.string.synchronize_feeds))
-                        },
-                    )
-                    Divider()
-                    DropdownMenuItem(
-                        onClick = {
-                            onShowToolbarMenu(false)
-                            onAddFeed()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = null,
-                            )
-                        },
-                        text = {
-                            Text(stringResource(id = R.string.add_feed))
-                        },
-                    )
-                    DropdownMenuItem(
-                        onClick = {
-                            if (viewState.visibleFeeds.size == 1) {
-                                onEditFeed(viewState.visibleFeeds.first().id)
-                            } else {
-                                onShowEditDialog()
-                            }
-                            onShowToolbarMenu(false)
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = null,
-                            )
-                        },
-                        text = {
-                            Text(stringResource(id = R.string.edit_feed))
-                        },
-                    )
-                    DropdownMenuItem(
-                        onClick = {
-                            onShowDeleteDialog()
-                            onShowToolbarMenu(false)
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = null,
-                            )
-                        },
-                        text = {
-                            Text(stringResource(id = R.string.delete_feed))
-                        },
-                    )
-                    Divider()
-                    DropdownMenuItem(
-                        onClick = {
-                            onShowToolbarMenu(false)
-                            onImport()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.ImportExport,
-                                contentDescription = null,
-                            )
-                        },
-                        text = {
-                            Text(stringResource(id = R.string.import_feeds_from_opml))
-                        },
-                    )
-                    DropdownMenuItem(
-                        onClick = {
-                            onShowToolbarMenu(false)
-                            onExport()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.ImportExport,
-                                contentDescription = null,
-                            )
-                        },
-                        text = {
-                            Text(stringResource(id = R.string.export_feeds_to_opml))
-                        },
-                    )
-                    Divider()
-                    DropdownMenuItem(
-                        onClick = {
-                            onShowToolbarMenu(false)
-                            onSettings()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Settings,
-                                contentDescription = null,
-                            )
-                        },
-                        text = {
-                            Text(stringResource(id = R.string.action_settings))
-                        },
-                    )
-                    Divider()
-                    DropdownMenuItem(
-                        onClick = {
-                            // NO-OP
-                        },
-                        leadingIcon = {
-                            Icon(
-                                painterResource(R.drawable.ic_anonymous_black_24dp),
-                                contentDescription = null,
-                            )
-                        },
-                        text = {
-                            // reusing "on"/"off" strings which have already been translated
-                            if (CronetNetworking.cronetEngine() != null) {
-                                Text(stringResource(id = R.string.battery_optimization_enabled))
-                            } else {
-                                Text(stringResource(id = R.string.battery_optimization_disabled))
+            PlainTooltipBox(tooltip = { Text(stringResource(R.string.open_menu)) }) {
+                Box {
+                    IconButton(
+                        onClick = { onShowToolbarMenu(true) },
+                        modifier = Modifier.tooltipAnchor(),
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.open_menu),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = viewState.showToolbarMenu,
+                        onDismissRequest = { onShowToolbarMenu(false) },
+                    ) {
+                        DropdownMenuItem(
+                            onClick = {
+                                onMarkAllAsRead()
+                                onShowToolbarMenu(false)
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.DoneAll,
+                                    contentDescription = null,
+                                )
+                            },
+                            text = {
+                                Text(stringResource(id = R.string.mark_all_as_read))
+                            },
+                        )
+                        Divider()
+                        DropdownMenuItem(
+                            onClick = {
+                                onRefreshAll()
+                                onShowToolbarMenu(false)
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = stringResource(R.string.synchronize_feeds),
+                                )
+                            },
+                            text = {
+                                Text(stringResource(id = R.string.synchronize_feeds))
+                            },
+                        )
+                        Divider()
+                        DropdownMenuItem(
+                            onClick = {
+                                onShowToolbarMenu(false)
+                                onAddFeed()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = null,
+                                )
+                            },
+                            text = {
+                                Text(stringResource(id = R.string.add_feed))
+                            },
+                        )
+                        DropdownMenuItem(
+                            onClick = {
+                                if (viewState.visibleFeeds.size == 1) {
+                                    onEditFeed(viewState.visibleFeeds.first().id)
+                                } else {
+                                    onShowEditDialog()
+                                }
+                                onShowToolbarMenu(false)
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                )
+                            },
+                            text = {
+                                Text(stringResource(id = R.string.edit_feed))
+                            },
+                        )
+                        DropdownMenuItem(
+                            onClick = {
+                                onShowDeleteDialog()
+                                onShowToolbarMenu(false)
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                )
+                            },
+                            text = {
+                                Text(stringResource(id = R.string.delete_feed))
+                            },
+                        )
+                        Divider()
+                        DropdownMenuItem(
+                            onClick = {
+                                onShowToolbarMenu(false)
+                                onImport()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.ImportExport,
+                                    contentDescription = null,
+                                )
+                            },
+                            text = {
+                                Text(stringResource(id = R.string.import_feeds_from_opml))
+                            },
+                        )
+                        DropdownMenuItem(
+                            onClick = {
+                                onShowToolbarMenu(false)
+                                onExport()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.ImportExport,
+                                    contentDescription = null,
+                                )
+                            },
+                            text = {
+                                Text(stringResource(id = R.string.export_feeds_to_opml))
+                            },
+                        )
+                        Divider()
+                        DropdownMenuItem(
+                            onClick = {
+                                onShowToolbarMenu(false)
+                                onSettings()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = null,
+                                )
+                            },
+                            text = {
+                                Text(stringResource(id = R.string.action_settings))
+                            },
+                        )
+                        Divider()
+                        DropdownMenuItem(
+                            onClick = {
+                                // NO-OP
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    painterResource(R.drawable.ic_anonymous_black_24dp),
+                                    contentDescription = null,
+                                )
+                            },
+                            text = {
+                                // reusing "on"/"off" strings which have already been translated
+                                if (CronetNetworking.cronetEngine() != null) {
+                                    Text(stringResource(id = R.string.battery_optimization_enabled))
+                                } else {
+                                    Text(stringResource(id = R.string.battery_optimization_disabled))
 
-                            }
-                        },
-                    )
-                    Divider()
-                    DropdownMenuItem(
-                        onClick = {
-                            onShowToolbarMenu(false)
-                            onSendFeedback()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Email,
-                                contentDescription = null,
-                            )
-                        },
-                        text = {
-                            Text(stringResource(id = R.string.send_bug_report))
-                        },
-                    )
+                                }
+                            },
+                        )
+                        Divider()
+                        DropdownMenuItem(
+                            onClick = {
+                                onShowToolbarMenu(false)
+                                onSendFeedback()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Email,
+                                    contentDescription = null,
+                                )
+                            },
+                            text = {
+                                Text(stringResource(id = R.string.send_bug_report))
+                            },
+                        )
+                    }
                 }
             }
         },
@@ -618,7 +616,6 @@ fun FeedScreen(
         when (screenType) {
             FeedScreenType.FeedGrid -> FeedGridContent(
                 viewState = viewState,
-                gridState = feedGridState,
                 onOpenNavDrawer = {
                     coroutineScope.launch {
                         if (drawerState.isOpen) {
@@ -628,16 +625,17 @@ fun FeedScreen(
                         }
                     }
                 },
-                markAsUnread = markAsUnread,
                 onAddFeed = onAddFeed,
+                markAsUnread = markAsUnread,
                 markBeforeAsRead = markBeforeAsRead,
                 markAfterAsRead = markAfterAsRead,
                 onItemClick = onOpenFeedItem,
-                onSetPinned = onSetPinned,
                 onSetBookmarked = onSetBookmarked,
+                gridState = feedGridState,
                 pagedFeedItems = pagedFeedItems,
                 modifier = innerModifier,
             ).also { logDebug(LOG_TAG, "Showing GRID") }
+
             FeedScreenType.FeedList -> FeedListContent(
                 viewState = viewState,
                 onOpenNavDrawer = {
@@ -654,9 +652,8 @@ fun FeedScreen(
                 markBeforeAsRead = markBeforeAsRead,
                 markAfterAsRead = markAfterAsRead,
                 onItemClick = onOpenFeedItem,
-                listState = feedListState,
-                onSetPinned = onSetPinned,
                 onSetBookmarked = onSetBookmarked,
+                listState = feedListState,
                 pagedFeedItems = pagedFeedItems,
                 modifier = innerModifier,
             ).also { logDebug(LOG_TAG, "Showing LIST") }
@@ -667,7 +664,6 @@ fun FeedScreen(
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalAnimationApi::class,
-    ExperimentalMaterialApi::class,
 )
 @Composable
 fun FeedScreen(
@@ -730,14 +726,18 @@ fun FeedScreen(
     }
 
     val floatingActionButton: @Composable () -> Unit = {
-        FloatingActionButton(
-            onClick = onMarkAllAsRead,
-            modifier = Modifier.navigationBarsPadding(),
-        ) {
-            Icon(
-                Icons.Default.DoneAll,
-                contentDescription = stringResource(R.string.mark_all_as_read),
-            )
+        PlainTooltipBox(tooltip = { Text(stringResource(R.string.mark_all_as_read)) }) {
+            FloatingActionButton(
+                onClick = onMarkAllAsRead,
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .tooltipAnchor(),
+            ) {
+                Icon(
+                    Icons.Default.DoneAll,
+                    contentDescription = stringResource(R.string.mark_all_as_read),
+                )
+            }
         }
     }
     val bottomBarVisibleState = remember { MutableTransitionState(viewState.isBottomBarVisible) }
@@ -765,8 +765,12 @@ fun FeedScreen(
         topBar = {
             SensibleTopAppBar(
                 scrollBehavior = scrollBehavior,
-                title = viewState.feedScreenTitle.title
-                    ?: stringResource(id = R.string.all_feeds),
+                title = when (viewState.feedScreenTitle.type) {
+                    FeedType.FEED -> viewState.feedScreenTitle.title
+                    FeedType.TAG -> viewState.feedScreenTitle.title
+                    FeedType.SAVED_ARTICLES -> stringResource(id = R.string.saved_articles)
+                    FeedType.ALL_FEEDS -> stringResource(id = R.string.all_feeds)
+                } ?: "",
                 navigationIcon = {
                     IconButton(
                         onClick = onOpenNavDrawer,
@@ -864,11 +868,10 @@ fun FeedListContent(
     viewState: FeedScreenViewState,
     onOpenNavDrawer: () -> Unit,
     onAddFeed: () -> Unit,
-    markAsUnread: (Long, Boolean) -> Unit,
-    markBeforeAsRead: (Int) -> Unit,
-    markAfterAsRead: (Int) -> Unit,
+    markAsUnread: (Long, Boolean, FeedOrTag?) -> Unit,
+    markBeforeAsRead: (FeedItemCursor) -> Unit,
+    markAfterAsRead: (FeedItemCursor) -> Unit,
     onItemClick: (Long) -> Unit,
-    onSetPinned: (Long, Boolean) -> Unit,
     onSetBookmarked: (Long, Boolean) -> Unit,
     listState: LazyListState,
     pagedFeedItems: LazyPagingItems<FeedListItem>,
@@ -908,6 +911,9 @@ fun FeedListContent(
             exit = fadeOut(),
             visible = viewState.haveVisibleFeedItems,
         ) {
+            val screenHeightPx = with(LocalDensity.current) {
+                LocalConfiguration.current.screenHeightDp.dp.toPx().toInt()
+            }
             LazyColumn(
                 state = listState,
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -945,11 +951,30 @@ fun FeedListContent(
                     val previewItem = pagedFeedItems[itemIndex]
                         ?: return@items
 
+                    if (viewState.markAsReadOnScroll && previewItem.unread) {
+                        val visible: Boolean by listState.rememberIsItemVisible(
+                            key = previewItem.id,
+                        )
+                        val mostlyVisible: Boolean by listState.rememberIsItemMostlyVisible(
+                            key = previewItem.id,
+                            screenHeightPx = screenHeightPx,
+                        )
+                        MarkItemAsReadOnScroll(
+                            itemId = previewItem.id,
+                            visible = visible,
+                            mostlyVisible = mostlyVisible,
+                            currentFeedOrTag = viewState.currentFeedOrTag,
+                            coroutineScope = coroutineScope,
+                            markAsRead = markAsUnread,
+                        )
+                    }
+
                     SwipeableFeedItemPreview(
                         onSwipe = { currentState ->
                             markAsUnread(
                                 previewItem.id,
                                 !currentState,
+                                null,
                             )
                         },
                         onlyUnread = viewState.onlyUnread,
@@ -957,21 +982,18 @@ fun FeedListContent(
                         showThumbnail = viewState.showThumbnails,
                         feedItemStyle = viewState.feedItemStyle,
                         swipeAsRead = viewState.swipeAsRead,
+                        newIndicator = !viewState.onlyUnread,
+                        bookmarkIndicator = !viewState.currentFeedOrTag.isSavedArticles,
                         onMarkAboveAsRead = {
-                            if (itemIndex > 0) {
-                                markBeforeAsRead(itemIndex)
-                                if (viewState.onlyUnread) {
-                                    coroutineScope.launch {
-                                        listState.scrollToItem(0)
-                                    }
+                            markBeforeAsRead(previewItem.cursor)
+                            if (viewState.onlyUnread) {
+                                coroutineScope.launch {
+                                    listState.scrollToItem(0)
                                 }
                             }
                         },
                         onMarkBelowAsRead = {
-                            markAfterAsRead(itemIndex)
-                        },
-                        onTogglePinned = {
-                            onSetPinned(previewItem.id, !previewItem.pinned)
+                            markAfterAsRead(previewItem.cursor)
                         },
                         onToggleBookmarked = {
                             onSetBookmarked(previewItem.id, !previewItem.bookmarked)
@@ -1026,11 +1048,10 @@ fun FeedGridContent(
     viewState: FeedScreenViewState,
     onOpenNavDrawer: () -> Unit,
     onAddFeed: () -> Unit,
-    markAsUnread: (Long, Boolean) -> Unit,
-    markBeforeAsRead: (Int) -> Unit,
-    markAfterAsRead: (Int) -> Unit,
+    markAsUnread: (Long, Boolean, FeedOrTag?) -> Unit,
+    markBeforeAsRead: (FeedItemCursor) -> Unit,
+    markAfterAsRead: (FeedItemCursor) -> Unit,
     onItemClick: (Long) -> Unit,
-    onSetPinned: (Long, Boolean) -> Unit,
     onSetBookmarked: (Long, Boolean) -> Unit,
     gridState: LazyStaggeredGridState,
     pagedFeedItems: LazyPagingItems<FeedListItem>,
@@ -1038,6 +1059,9 @@ fun FeedGridContent(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val screenHeightPx = with(LocalDensity.current) {
+        LocalConfiguration.current.screenHeightDp.dp.toPx().toInt()
+    }
 
     Box(modifier = modifier) {
         AnimatedVisibility(
@@ -1097,11 +1121,30 @@ fun FeedGridContent(
                     val previewItem = pagedFeedItems[itemIndex]
                         ?: return@items
 
+                    if (viewState.markAsReadOnScroll && previewItem.unread) {
+                        val visible: Boolean by gridState.rememberIsItemVisible(
+                            key = previewItem.id,
+                        )
+                        val mostlyVisible: Boolean by gridState.rememberIsItemMostlyVisible(
+                            key = previewItem.id,
+                            screenHeightPx = screenHeightPx,
+                        )
+                        MarkItemAsReadOnScroll(
+                            itemId = previewItem.id,
+                            visible = visible,
+                            mostlyVisible = mostlyVisible,
+                            currentFeedOrTag = viewState.currentFeedOrTag,
+                            coroutineScope = coroutineScope,
+                            markAsRead = markAsUnread,
+                        )
+                    }
+
                     SwipeableFeedItemPreview(
                         onSwipe = { currentState ->
                             markAsUnread(
                                 previewItem.id,
                                 !currentState,
+                                null,
                             )
                         },
                         onlyUnread = viewState.onlyUnread,
@@ -1109,21 +1152,18 @@ fun FeedGridContent(
                         showThumbnail = viewState.showThumbnails,
                         feedItemStyle = viewState.feedItemStyle,
                         swipeAsRead = viewState.swipeAsRead,
+                        newIndicator = !viewState.onlyUnread,
+                        bookmarkIndicator = !viewState.currentFeedOrTag.isSavedArticles,
                         onMarkAboveAsRead = {
-                            if (itemIndex > 0) {
-                                markBeforeAsRead(itemIndex)
-                                if (viewState.onlyUnread) {
-                                    coroutineScope.launch {
-                                        gridState.scrollToItem(0)
-                                    }
+                            markBeforeAsRead(previewItem.cursor)
+                            if (viewState.onlyUnread) {
+                                coroutineScope.launch {
+                                    gridState.scrollToItem(0)
                                 }
                             }
                         },
                         onMarkBelowAsRead = {
-                            markAfterAsRead(itemIndex)
-                        },
-                        onTogglePinned = {
-                            onSetPinned(previewItem.id, !previewItem.pinned)
+                            markAfterAsRead(previewItem.cursor)
                         },
                         onToggleBookmarked = {
                             onSetBookmarked(previewItem.id, !previewItem.bookmarked)
@@ -1159,6 +1199,12 @@ data class FeedOrTag(
 val FeedOrTag.isFeed
     get() = id > ID_UNSET
 
+val FeedOrTag.isSavedArticles
+    get() = id == ID_SAVED_ARTICLES
+
+val FeedOrTag.isNotSavedArticles
+    get() = !isSavedArticles
+
 enum class FeedScreenType {
     FeedGrid,
     FeedList,
@@ -1175,5 +1221,58 @@ fun <T : Any> LazyPagingItems<T>.rememberLazyListState(): LazyListState {
         0 -> remember(this) { LazyListState(0, 0) }
         // Return rememberLazyListState (normal case).
         else -> androidx.compose.foundation.lazy.rememberLazyListState()
+    }
+}
+
+/**
+ * @param itemId id of item to mark as read
+ * @param visible if item is visible at all
+ * @param mostlyVisible if item is mostly visible
+ * @param currentFeedOrTag current feed or tag at the time of display
+ * @param coroutineScope a scope which will be cancelled when navigated away from feed screen
+ * @param markAsRead action to run
+ */
+@Composable
+fun MarkItemAsReadOnScroll(
+    itemId: Long,
+    visible: Boolean,
+    mostlyVisible: Boolean,
+    currentFeedOrTag: FeedOrTag,
+    coroutineScope: CoroutineScope,
+    markAsRead: (Long, Boolean, FeedOrTag?) -> Unit,
+) {
+    var debounced by remember {
+        mutableStateOf(false)
+    }
+    if (mostlyVisible) {
+        LaunchedEffect(null) {
+            delay(1000)
+            debounced = true
+        }
+    }
+    if (visible) {
+        DisposableEffect(null) {
+            onDispose {
+                if (debounced) {
+                    coroutineScope.launch(Dispatchers.Default) {
+                        // Why Coroutine? Why a delay?
+                        // Because this scope will be cancelled if the screen
+                        // is navigated away from and I only want things to be marked
+                        // during scroll - not during navigation.
+                        // Navigating between feeds is a special case, which is
+                        // why the currentFeedOrTag needs to be passed to the
+                        // view model.
+                        @Suppress("UNNECESSARYVARIABLE")
+                        val feedOrTag = currentFeedOrTag
+                        delay(100)
+                        markAsRead(
+                            itemId,
+                            false,
+                            feedOrTag,
+                        )
+                    }
+                }
+            }
+        }
     }
 }

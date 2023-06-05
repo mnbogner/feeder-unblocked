@@ -10,11 +10,15 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.nononsenseapps.feeder.ApplicationCoroutineScope
 import com.nononsenseapps.feeder.db.room.Feed
+import com.nononsenseapps.feeder.db.room.FeedForSettings
 import com.nononsenseapps.feeder.db.room.FeedItem
+import com.nononsenseapps.feeder.db.room.FeedItemCursor
 import com.nononsenseapps.feeder.db.room.FeedItemForReadMark
 import com.nononsenseapps.feeder.db.room.FeedItemIdWithLink
 import com.nononsenseapps.feeder.db.room.FeedItemWithFeed
 import com.nononsenseapps.feeder.db.room.FeedTitle
+import com.nononsenseapps.feeder.db.room.ID_ALL_FEEDS
+import com.nononsenseapps.feeder.db.room.ID_SAVED_ARTICLES
 import com.nononsenseapps.feeder.db.room.ID_UNSET
 import com.nononsenseapps.feeder.db.room.RemoteFeed
 import com.nononsenseapps.feeder.db.room.SyncDevice
@@ -58,8 +62,6 @@ class Repository(override val di: DI) : DIAware {
 
     val showOnlyUnread: StateFlow<Boolean> = settingsStore.showOnlyUnread
     fun setShowOnlyUnread(value: Boolean) = settingsStore.setShowOnlyUnread(value)
-    val showOnlyBookmarked: StateFlow<Boolean> = settingsStore.showOnlyBookmarked
-    fun setShowOnlyBookmarked(value: Boolean) = settingsStore.setShowOnlyBookmarked(value)
 
     val currentFeedAndTag: StateFlow<Pair<Long, String>> = settingsStore.currentFeedAndTag
     fun setCurrentFeedAndTag(feedId: Long, tag: String) {
@@ -82,6 +84,11 @@ class Repository(override val di: DI) : DIAware {
     val isArticleOpen: StateFlow<Boolean> = settingsStore.isArticleOpen
     fun setIsArticleOpen(open: Boolean) {
         settingsStore.setIsArticleOpen(open)
+    }
+
+    val isMarkAsReadOnScroll: StateFlow<Boolean> = settingsStore.isMarkAsReadOnScroll
+    fun setIsMarkAsReadOnScroll(value: Boolean) {
+        settingsStore.setIsMarkAsReadOnScroll(value)
     }
 
     val currentArticleId: StateFlow<Long> = settingsStore.currentArticleId
@@ -173,14 +180,12 @@ class Repository(override val di: DI) : DIAware {
     fun getFeedListItems(feedId: Long, tag: String): Flow<PagingData<FeedListItem>> = combine(
         showOnlyUnread,
         currentSorting,
-        showOnlyBookmarked,
-    ) { showOnlyUnread, currentSorting, showOnlyBookmarked ->
+    ) { showOnlyUnread, currentSorting ->
         FeedListArgs(
             feedId = feedId,
             tag = tag,
             onlyUnread = showOnlyUnread,
             newestFirst = currentSorting == SortingOptions.NEWEST_FIRST,
-            onlyBookmarks = showOnlyBookmarked,
         )
     }.flatMapLatest {
         feedItemStore.getPagedFeedItems(
@@ -188,7 +193,6 @@ class Repository(override val di: DI) : DIAware {
             tag = it.tag,
             onlyUnread = it.onlyUnread,
             newestFirst = it.newestFirst,
-            onlyBookmarks = it.onlyBookmarks,
         )
     }
 
@@ -197,15 +201,16 @@ class Repository(override val di: DI) : DIAware {
         currentFeedAndTag,
         showOnlyUnread,
         currentSorting,
-        showOnlyBookmarked,
-    ) { feedAndTag, showOnlyUnread, currentSorting, showOnlyBookmarked ->
+    ) { feedAndTag, showOnlyUnread, currentSorting ->
         val (feedId, tag) = feedAndTag
         FeedListArgs(
             feedId = feedId,
             tag = tag,
-            onlyUnread = showOnlyUnread,
+            onlyUnread = when (feedId) {
+                ID_SAVED_ARTICLES -> false
+                else -> showOnlyUnread
+            },
             newestFirst = currentSorting == SortingOptions.NEWEST_FIRST,
-            onlyBookmarks = showOnlyBookmarked,
         )
     }.flatMapLatest {
         feedItemStore.getPagedFeedItems(
@@ -213,7 +218,6 @@ class Repository(override val di: DI) : DIAware {
             tag = it.tag,
             onlyUnread = it.onlyUnread,
             newestFirst = it.newestFirst,
-            onlyBookmarks = it.onlyBookmarks,
         )
     }
 
@@ -227,12 +231,14 @@ class Repository(override val di: DI) : DIAware {
         FeedListArgs(
             feedId = feedId,
             tag = tag,
-            onlyUnread = showOnlyUnread,
+            onlyUnread = when (feedId) {
+                ID_SAVED_ARTICLES -> false
+                else -> showOnlyUnread
+            },
             newestFirst = false,
-            onlyBookmarks = false,
         )
     }.flatMapLatest {
-        feedItemStore.getVisibleFeedItemCount(
+        feedItemStore.getFeedItemCount(
             feedId = it.feedId,
             tag = it.tag,
             onlyUnread = it.onlyUnread,
@@ -253,13 +259,15 @@ class Repository(override val di: DI) : DIAware {
 
     suspend fun saveFeed(feed: Feed): Long = feedStore.saveFeed(feed)
 
-    suspend fun setPinned(itemId: Long, pinned: Boolean) =
-        feedItemStore.setPinned(itemId = itemId, pinned = pinned)
-
     suspend fun setBookmarked(itemId: Long, bookmarked: Boolean) =
         feedItemStore.setBookmarked(itemId = itemId, bookmarked = bookmarked)
 
     suspend fun markAsNotified(itemIds: List<Long>) = feedItemStore.markAsNotified(itemIds)
+
+    suspend fun toggleNotifications(feedId: Long, value: Boolean) =
+        feedStore.toggleNotifications(feedId, value)
+
+    val feedNotificationSettings: Flow<List<FeedForSettings>> = feedStore.feedForSettings
 
     suspend fun markAsReadAndNotified(itemId: Long) {
         feedItemStore.markAsReadAndNotified(itemId)
@@ -302,6 +310,12 @@ class Repository(override val di: DI) : DIAware {
                     tag.isNotBlank() -> tag
                     else -> null
                 },
+                type = when (feedId) {
+                    ID_UNSET -> FeedType.TAG
+                    ID_ALL_FEEDS -> FeedType.ALL_FEEDS
+                    ID_SAVED_ARTICLES -> FeedType.SAVED_ARTICLES
+                    else -> FeedType.FEED
+                },
             ),
         )
     }
@@ -314,6 +328,12 @@ class Repository(override val di: DI) : DIAware {
                     feedId > ID_UNSET -> feedStore.getDisplayTitle(feedId)
                     tag.isNotBlank() -> tag
                     else -> null
+                },
+                type = when (feedId) {
+                    ID_UNSET -> FeedType.TAG
+                    ID_ALL_FEEDS -> FeedType.ALL_FEEDS
+                    ID_SAVED_ARTICLES -> FeedType.SAVED_ARTICLES
+                    else -> FeedType.FEED
                 },
             )
         }
@@ -332,24 +352,24 @@ class Repository(override val di: DI) : DIAware {
         scheduleSendRead()
     }
 
-    suspend fun markBeforeAsRead(itemIndex: Int, feedId: Long, tag: String) {
-        feedItemStore.markBeforeAsRead(
-            index = itemIndex,
+    suspend fun markBeforeAsRead(cursor: FeedItemCursor, feedId: Long, tag: String) {
+        feedItemStore.markAsRead(
             feedId = feedId,
             tag = tag,
             onlyUnread = showOnlyUnread.value,
-            newestFirst = SortingOptions.NEWEST_FIRST == currentSorting.value,
+            descending = SortingOptions.NEWEST_FIRST != currentSorting.value,
+            cursor = cursor,
         )
         scheduleSendRead()
     }
 
-    suspend fun markAfterAsRead(itemIndex: Int, feedId: Long, tag: String) {
-        feedItemStore.markAfterAsRead(
-            index = itemIndex,
+    suspend fun markAfterAsRead(cursor: FeedItemCursor, feedId: Long, tag: String) {
+        feedItemStore.markAsRead(
             feedId = feedId,
             tag = tag,
             onlyUnread = showOnlyUnread.value,
-            newestFirst = SortingOptions.NEWEST_FIRST == currentSorting.value,
+            descending = SortingOptions.NEWEST_FIRST == currentSorting.value,
+            cursor = cursor,
         )
         scheduleSendRead()
     }
@@ -358,6 +378,13 @@ class Repository(override val di: DI) : DIAware {
 
     val drawerItemsWithUnreadCounts: Flow<List<DrawerItemWithUnreadCount>> =
         feedStore.drawerItemsWithUnreadCounts
+
+    val getUnreadBookmarksCount
+        get() = feedItemStore.getFeedItemCount(
+            feedId = ID_SAVED_ARTICLES,
+            tag = "",
+            onlyUnread = true,
+        )
 
     fun getVisibleFeedTitles(feedId: Long, tag: String): Flow<List<FeedTitle>> =
         feedStore.getFeedTitles(feedId, tag).buffer(1)
@@ -581,14 +608,21 @@ private data class FeedListArgs(
     val tag: String,
     val newestFirst: Boolean,
     val onlyUnread: Boolean,
-    val onlyBookmarks: Boolean,
 )
 
 // Wrapper class because flow combine doesn't like nulls
 @Immutable
 data class ScreenTitle(
     val title: String?,
+    val type: FeedType,
 )
+
+enum class FeedType {
+    FEED,
+    TAG,
+    SAVED_ARTICLES,
+    ALL_FEEDS,
+}
 
 @Immutable
 data class Enclosure(
@@ -618,7 +652,6 @@ data class Article(
     val pubDate: ZonedDateTime? = item?.pubDate
     val feedId: Long = item?.feedId ?: ID_UNSET
     val feedUrl: String? = item?.feedUrl?.toString()
-    val pinned: Boolean = item?.pinned ?: false
     val bookmarked: Boolean = item?.bookmarked ?: false
 }
 

@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.ContentAlpha
 import androidx.compose.material.LocalContentAlpha
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Terrain
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
@@ -37,6 +40,7 @@ import coil.size.Precision
 import coil.size.Scale
 import com.nononsenseapps.feeder.R
 import com.nononsenseapps.feeder.db.room.ID_UNSET
+import com.nononsenseapps.feeder.ui.compose.coil.rememberTintedVectorPainter
 import com.nononsenseapps.feeder.ui.compose.minimumTouchSize
 import com.nononsenseapps.feeder.ui.compose.text.WithBidiDeterminedLayoutDirection
 import com.nononsenseapps.feeder.ui.compose.theme.FeedListItemDateStyle
@@ -44,8 +48,8 @@ import com.nononsenseapps.feeder.ui.compose.theme.FeedListItemFeedTitleStyle
 import com.nononsenseapps.feeder.ui.compose.theme.FeedListItemTitleTextStyle
 import com.nononsenseapps.feeder.ui.compose.theme.FeederTheme
 import com.nononsenseapps.feeder.ui.compose.theme.LocalDimens
-import com.nononsenseapps.feeder.ui.compose.theme.rememberPlaceholderImage
 import com.nononsenseapps.feeder.ui.compose.theme.titleFontWeight
+import org.threeten.bp.Instant
 
 @Composable
 fun FeedItemSuperCompact(
@@ -54,11 +58,11 @@ fun FeedItemSuperCompact(
     onMarkAboveAsRead: () -> Unit,
     onMarkBelowAsRead: () -> Unit,
     onShareItem: () -> Unit,
-    onTogglePinned: () -> Unit,
     onToggleBookmarked: () -> Unit,
     dropDownMenuExpanded: Boolean,
     onDismissDropdown: () -> Unit,
     newIndicator: Boolean,
+    bookmarkIndicator: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -120,30 +124,14 @@ fun FeedItemSuperCompact(
                     DropdownMenuItem(
                         onClick = {
                             onDismissDropdown()
-                            onTogglePinned()
-                        },
-                        text = {
-                            Text(
-                                text = stringResource(
-                                    when (item.pinned) {
-                                        true -> R.string.unpin_article
-                                        false -> R.string.pin_article
-                                    },
-                                ),
-                            )
-                        },
-                    )
-                    DropdownMenuItem(
-                        onClick = {
-                            onDismissDropdown()
                             onToggleBookmarked()
                         },
                         text = {
                             Text(
                                 text = stringResource(
                                     when (item.bookmarked) {
-                                        true -> R.string.remove_bookmark
-                                        false -> R.string.bookmark_article
+                                        true -> R.string.unsave_article
+                                        false -> R.string.save_article
                                     },
                                 ),
                             )
@@ -186,14 +174,15 @@ fun FeedItemSuperCompact(
             }
         }
 
-        if (showThumbnail && (item.imageUrl != null || item.feedImageUrl != null) || item.unread || item.bookmarked || item.pinned) {
+        val asUnread = item.unread && newIndicator
+        val asBookmarked = item.bookmarked && bookmarkIndicator
+        if (showThumbnail && (item.imageUrl != null || item.feedImageUrl != null) || asUnread || asBookmarked) {
             Box(
                 modifier = Modifier.fillMaxHeight(),
                 contentAlignment = Alignment.TopEnd,
             ) {
                 (item.imageUrl ?: item.feedImageUrl?.toString())?.let { imageUrl ->
                     if (showThumbnail) {
-                        val placeholder = rememberPlaceholderImage()
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
                                 .data(imageUrl)
@@ -203,11 +192,11 @@ fun FeedItemSuperCompact(
                                     },
                                 )
                                 .scale(Scale.FIT)
-                                .placeholder(placeholder)
                                 .size(200)
-                                .error(placeholder)
                                 .precision(Precision.INEXACT)
                                 .build(),
+                            placeholder = rememberTintedVectorPainter(Icons.Outlined.Terrain),
+                            error = rememberTintedVectorPainter(Icons.Outlined.ErrorOutline),
                             contentDescription = stringResource(id = R.string.article_image),
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
@@ -217,9 +206,8 @@ fun FeedItemSuperCompact(
                     }
                 }
                 FeedItemIndicatorColumn(
-                    unread = item.unread && newIndicator,
-                    bookmarked = item.bookmarked,
-                    pinned = item.pinned,
+                    unread = asUnread,
+                    bookmarked = asBookmarked,
                     modifier = Modifier.padding(
                         top = 4.dp,
                         bottom = 4.dp,
@@ -251,19 +239,20 @@ private fun PreviewRead() {
                     imageUrl = null,
                     link = null,
                     id = ID_UNSET,
-                    pinned = false,
                     bookmarked = false,
                     feedImageUrl = null,
+                    primarySortTime = Instant.EPOCH,
+                    rawPubDate = null,
                 ),
                 showThumbnail = true,
                 onMarkAboveAsRead = {},
                 onMarkBelowAsRead = {},
                 onShareItem = {},
-                onTogglePinned = {},
                 onToggleBookmarked = {},
                 dropDownMenuExpanded = false,
                 onDismissDropdown = {},
                 newIndicator = true,
+                bookmarkIndicator = true,
             )
         }
     }
@@ -284,19 +273,20 @@ private fun PreviewUnread() {
                     imageUrl = null,
                     link = null,
                     id = ID_UNSET,
-                    pinned = false,
                     bookmarked = false,
                     feedImageUrl = null,
+                    primarySortTime = Instant.EPOCH,
+                    rawPubDate = null,
                 ),
                 showThumbnail = true,
                 onMarkAboveAsRead = {},
                 onMarkBelowAsRead = {},
                 onShareItem = {},
-                onTogglePinned = {},
                 onToggleBookmarked = {},
                 dropDownMenuExpanded = false,
                 onDismissDropdown = {},
                 newIndicator = true,
+                bookmarkIndicator = true,
             )
         }
     }
@@ -317,19 +307,20 @@ private fun PreviewWithImage() {
                     imageUrl = "blabla",
                     link = null,
                     id = ID_UNSET,
-                    pinned = true,
-                    bookmarked = false,
+                    bookmarked = true,
                     feedImageUrl = null,
+                    primarySortTime = Instant.EPOCH,
+                    rawPubDate = null,
                 ),
                 showThumbnail = true,
                 onMarkAboveAsRead = {},
                 onMarkBelowAsRead = {},
                 onShareItem = {},
-                onTogglePinned = {},
                 onToggleBookmarked = {},
                 dropDownMenuExpanded = false,
                 onDismissDropdown = {},
                 newIndicator = true,
+                bookmarkIndicator = true,
             )
         }
     }

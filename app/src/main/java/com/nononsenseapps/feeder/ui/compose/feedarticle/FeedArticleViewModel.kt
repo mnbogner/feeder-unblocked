@@ -9,6 +9,7 @@ import com.nononsenseapps.feeder.ApplicationCoroutineScope
 import com.nononsenseapps.feeder.archmodel.Article
 import com.nononsenseapps.feeder.archmodel.Enclosure
 import com.nononsenseapps.feeder.archmodel.FeedItemStyle
+import com.nononsenseapps.feeder.archmodel.FeedType
 import com.nononsenseapps.feeder.archmodel.ItemOpener
 import com.nononsenseapps.feeder.archmodel.LinkOpener
 import com.nononsenseapps.feeder.archmodel.Repository
@@ -20,6 +21,7 @@ import com.nononsenseapps.feeder.base.DIAwareViewModel
 import com.nononsenseapps.feeder.blob.blobFullFile
 import com.nononsenseapps.feeder.blob.blobFullInputStream
 import com.nononsenseapps.feeder.blob.blobInputStream
+import com.nononsenseapps.feeder.db.room.FeedItemCursor
 import com.nononsenseapps.feeder.db.room.FeedItemForFetching
 import com.nononsenseapps.feeder.db.room.FeedTitle
 import com.nononsenseapps.feeder.db.room.ID_UNSET
@@ -30,6 +32,7 @@ import com.nononsenseapps.feeder.model.TTSStateHolder
 import com.nononsenseapps.feeder.model.workmanager.requestFeedSync
 import com.nononsenseapps.feeder.ui.compose.feed.FeedListItem
 import com.nononsenseapps.feeder.ui.compose.feed.FeedOrTag
+import com.nononsenseapps.feeder.ui.compose.feed.isNotSavedArticles
 import com.nononsenseapps.feeder.ui.compose.navdrawer.DrawerItemWithUnreadCount
 import com.nononsenseapps.feeder.ui.compose.text.htmlToAnnotatedString
 import com.nononsenseapps.feeder.util.FilePathProvider
@@ -80,7 +83,7 @@ class FeedArticleViewModel(
             .stateIn(
                 viewModelScope,
                 SharingStarted.Eagerly,
-                ScreenTitle(""),
+                ScreenTitle("", FeedType.ALL_FEEDS),
             )
 
     private val visibleFeeds: StateFlow<List<FeedTitle>> =
@@ -93,10 +96,6 @@ class FeedArticleViewModel(
 
     fun setShowOnlyUnread(value: Boolean) = viewModelScope.launch {
         repository.setShowOnlyUnread(value)
-    }
-
-    fun setShowOnlyBookmarked(value: Boolean) = viewModelScope.launch {
-        repository.setShowOnlyBookmarked(value)
     }
 
     fun deleteFeeds(feedIds: List<Long>) = applicationCoroutineScope.launch {
@@ -112,22 +111,22 @@ class FeedArticleViewModel(
         repository.markAsUnread(itemId)
     }
 
-    fun markAsRead(itemId: Long) = applicationCoroutineScope.launch {
-        repository.markAsReadAndNotified(itemId)
+    fun markAsRead(itemId: Long, feedOrTag: FeedOrTag?) = applicationCoroutineScope.launch {
+        val (feedId, tag) = repository.currentFeedAndTag.value
+        // Ensure mark as read on scroll doesn't fire when navigating between feeds
+        if (feedOrTag == null || feedId == feedOrTag.id && tag == feedOrTag.tag) {
+            repository.markAsReadAndNotified(itemId)
+        }
     }
 
-    fun markBeforeAsRead(itemIndex: Int) = applicationCoroutineScope.launch {
+    fun markBeforeAsRead(cursor: FeedItemCursor) = applicationCoroutineScope.launch {
         val (feedId, feedTag) = repository.currentFeedAndTag.value
-        repository.markBeforeAsRead(itemIndex, feedId, feedTag)
+        repository.markBeforeAsRead(cursor, feedId, feedTag)
     }
 
-    fun markAfterAsRead(itemIndex: Int) = applicationCoroutineScope.launch {
+    fun markAfterAsRead(cursor: FeedItemCursor) = applicationCoroutineScope.launch {
         val (feedId, feedTag) = repository.currentFeedAndTag.value
-        repository.markAfterAsRead(itemIndex, feedId, feedTag)
-    }
-
-    fun setPinned(itemId: Long, pinned: Boolean) = applicationCoroutineScope.launch {
-        repository.setPinned(itemId, pinned)
+        repository.markAfterAsRead(cursor, feedId, feedTag)
     }
 
     fun setBookmarked(itemId: Long, bookmarked: Boolean) = applicationCoroutineScope.launch {
@@ -208,15 +207,17 @@ class FeedArticleViewModel(
             ItemOpener.CUSTOM_TAB == itemOpener && articleLink != null -> {
                 openInCustomTab(articleLink)
             }
+
             ItemOpener.DEFAULT_BROWSER == itemOpener && articleLink != null -> {
                 openInBrowser(articleLink)
             }
+
             else -> {
                 setCurrentArticle(itemId)
                 navigateToArticle()
             }
         }
-        markAsRead(itemId)
+        markAsRead(itemId, null)
     }
 
     // Used to trigger state update
@@ -256,9 +257,10 @@ class FeedArticleViewModel(
             ttsStateHolder.ttsState,
             repository.swipeAsRead,
             textToDisplayTrigger, // Never actually read, only used as trigger
-            repository.showOnlyBookmarked,
             repository.useDetectLanguage,
             ttsStateHolder.availableLanguages,
+            repository.getUnreadBookmarksCount,
+            repository.isMarkAsReadOnScroll,
         ) { params: Array<Any> ->
             @Suppress("UNCHECKED_CAST")
             val article = params[17] as Article
@@ -270,8 +272,11 @@ class FeedArticleViewModel(
             val haveVisibleFeedItems = (params[9] as Int) > 0
 
             @Suppress("UNCHECKED_CAST")
+            val currentFeedOrTag = params[16] as FeedOrTag
+
+            @Suppress("UNCHECKED_CAST")
             FeedArticleScreenViewState(
-                onlyUnread = params[0] as Boolean,
+                onlyUnread = currentFeedOrTag.isNotSavedArticles && (params[0] as Boolean),
                 showFab = haveVisibleFeedItems && (params[1] as Boolean),
                 showThumbnails = params[2] as Boolean,
                 currentTheme = params[3] as ThemeOptions,
@@ -293,7 +298,7 @@ class FeedArticleViewModel(
                 enclosure = article.enclosure,
                 articleTitle = article.title,
                 feedDisplayTitle = article.feedDisplayTitle,
-                currentFeedOrTag = params[16] as FeedOrTag,
+                currentFeedOrTag = currentFeedOrTag,
                 articleLink = article.link,
                 textToDisplay = getTextToDisplayFor(article.id),
                 isTTSPlaying = ttsState == PlaybackStatus.PLAYING,
@@ -301,11 +306,11 @@ class FeedArticleViewModel(
                 articleId = article.id,
                 isArticleOpen = params[14] as Boolean,
                 swipeAsRead = params[19] as SwipeAsRead,
-                isPinned = article.pinned,
                 isBookmarked = article.bookmarked,
-                onlyBookmarked = params[21] as Boolean,
-                useDetectLanguage = params[22] as Boolean,
-                ttsLanguages = params[23] as List<Locale>,
+                useDetectLanguage = params[21] as Boolean,
+                ttsLanguages = params[22] as List<Locale>,
+                unreadBookmarksCount = params[23] as Int,
+                markAsReadOnScroll = params[24] as Boolean,
             )
         }
             .stateIn(
@@ -376,6 +381,7 @@ class FeedArticleViewModel(
                         )
                     }
                 }
+
                 TextToDisplay.FULLTEXT -> {
                     blobFullInputStream(
                         viewState.value.articleId,
@@ -387,6 +393,7 @@ class FeedArticleViewModel(
                         )
                     }
                 }
+
                 TextToDisplay.LOADING_FULLTEXT -> null
                 TextToDisplay.FAILED_TO_LOAD_FULLTEXT -> null
             }
@@ -411,7 +418,6 @@ class FeedArticleViewModel(
 interface FeedScreenViewState {
     val currentFeedOrTag: FeedOrTag
     val onlyUnread: Boolean
-    val onlyBookmarked: Boolean
     val showFab: Boolean
     val showThumbnails: Boolean
     val currentTheme: ThemeOptions
@@ -419,6 +425,7 @@ interface FeedScreenViewState {
     val feedScreenTitle: ScreenTitle
     val visibleFeeds: List<FeedTitle>
     val drawerItemsWithUnreadCounts: List<DrawerItemWithUnreadCount>
+    val unreadBookmarksCount: Int
     val feedItemStyle: FeedItemStyle
     val expandedTags: Set<String>
     val isBottomBarVisible: Boolean
@@ -429,6 +436,7 @@ interface FeedScreenViewState {
     val showEditDialog: Boolean
     val haveVisibleFeedItems: Boolean
     val swipeAsRead: SwipeAsRead
+    val markAsReadOnScroll: Boolean
 }
 
 interface ArticleScreenViewState {
@@ -448,7 +456,6 @@ interface ArticleScreenViewState {
     val articleTitle: String
     val showToolbarMenu: Boolean
     val feedDisplayTitle: String
-    val isPinned: Boolean
     val isBookmarked: Boolean
 }
 
@@ -456,15 +463,15 @@ interface ArticleScreenViewState {
 data class FeedArticleScreenViewState(
     override val currentFeedOrTag: FeedOrTag = FeedOrTag(ID_UNSET, ""),
     override val onlyUnread: Boolean = true,
-    override val onlyBookmarked: Boolean = false,
     override val showFab: Boolean = true,
     override val showThumbnails: Boolean = true,
     override val currentTheme: ThemeOptions = ThemeOptions.SYSTEM,
     override val latestSyncTimestamp: Instant = Instant.EPOCH,
     // Defaults to empty string to avoid rendering until loading complete
-    override val feedScreenTitle: ScreenTitle = ScreenTitle(""),
+    override val feedScreenTitle: ScreenTitle = ScreenTitle("", FeedType.FEED),
     override val visibleFeeds: List<FeedTitle> = emptyList(),
     override val drawerItemsWithUnreadCounts: List<DrawerItemWithUnreadCount> = emptyList(),
+    override val unreadBookmarksCount: Int = 0,
     override val feedItemStyle: FeedItemStyle = FeedItemStyle.CARD,
     override val expandedTags: Set<String> = emptySet(),
     override val isBottomBarVisible: Boolean = false,
@@ -487,8 +494,8 @@ data class FeedArticleScreenViewState(
     override val feedDisplayTitle: String = "",
     override val articleId: Long = ID_UNSET,
     override val swipeAsRead: SwipeAsRead = SwipeAsRead.ONLY_FROM_END,
-    override val isPinned: Boolean = false,
     override val isBookmarked: Boolean = false,
     override val useDetectLanguage: Boolean = false,
+    override val markAsReadOnScroll: Boolean = false,
     val isArticleOpen: Boolean = false,
 ) : FeedScreenViewState, ArticleScreenViewState

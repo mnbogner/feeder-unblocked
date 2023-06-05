@@ -1,3 +1,57 @@
+# 2.4.15
+Jonas Kalderstam (15):
+  * [6838e46a] Updated versions
+  * [8cd2453a] Changed to official upsert
+  * [aa4c7362] Changed to new and safer flow collection with lifecycle
+         awareness
+  * [233afed4] Updated so text should appear more balanced with line breaks
+         and hyphenation
+  * [5077ad25] Added tooltips to all icon buttons on long-press
+  * [4c7ab111] Changed so zeros aren't shown in nav drawer
+  * [ab30b452] Changed so New-indicator is only shown if read items would be
+         shown
+  * [48c8b1e0] Changed so pressing Back will close the nav drawer if it is
+         open
+  * [792bdd93] Changed placeholder images to be easier on the eyes
+  * [3c83228e] Fixed too many image captions when image was wrapped in
+         figure
+  * [586d6735] Changed so image captions are not included in TextToSpeech
+  * [6c4f6f14] Improved article layout with spacing and image captions
+  * [5fd8c853] Improved table rendering in article view
+  * [e23ecb47] Improved reader screen performance
+  * [6bf00a09] Fixed display of nested figures in reader
+
+# 2.4.14
+Jonas Kalderstam (4):
+  * [9251378d] Added TW title
+  * [f6bd778e] Updated UserAgent to explain what the app is for server
+         owners
+  * [d13def0e] Fixed crash when searching for strange URLs
+  * [63c0da7a] Fixed rare crash in reader
+
+Subham Jena (1):
+  * [5e89dfc2] Updated Odia translation using Weblate
+
+yangyangdaji (1):
+  * [f86db9ca] Translated using Weblate (Chinese (Traditional))
+
+# 2.4.13
+Hotarun (1):
+  * [a25e1cbb] Updated Russian translation using Weblate
+
+Jonas Kalderstam (9):
+  * [9f8dd7e4] Updated versions and enabled gradle configuration cache
+  * [34843b8e] Syncing will now scroll list to top so new items are
+         immediately visible
+  * [3016f72c] Fixed send bug report to open email client instead of GitLab
+  * [10c661ad] Added check for notification permission before trying to
+         notify
+  * [d58e2955] Improved build performance
+  * [bca3f845] Fixed screen getting offset when increasing display size on
+         device
+  * [cf81e5e5] Fixed so release script can generate config locales
+  * [2854679f] Tweaked release script
+
 # 2.4.12
 Belmar Begić (1):
   * [9157af8f] Updated Bosnian translation using Weblate

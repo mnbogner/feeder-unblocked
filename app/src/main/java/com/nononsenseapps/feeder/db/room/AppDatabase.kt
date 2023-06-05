@@ -28,6 +28,7 @@ import org.kodein.di.instance
 const val DATABASE_NAME = "rssDatabase"
 const val ID_UNSET: Long = 0
 const val ID_ALL_FEEDS: Long = -10
+const val ID_SAVED_ARTICLES: Long = -20
 
 private const val LOG_TAG = "FEEDER_APPDB"
 
@@ -49,7 +50,7 @@ private const val LOG_TAG = "FEEDER_APPDB"
         RemoteFeed::class,
         SyncDevice::class,
     ],
-    version = 25,
+    version = 26,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -111,12 +112,33 @@ fun getAllMigrations(di: DI) = arrayOf(
     MIGRATION_22_23,
     MigrationFrom23To24(di),
     MigrationFrom24To25(di),
+    MigrationFrom25To26(di),
 )
 
 /*
  * 6 represents legacy database
  * 7 represents new Room database
  */
+@Suppress("ClassName")
+class MigrationFrom25To26(override val di: DI) : Migration(25, 26), DIAware {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            """
+            CREATE UNIQUE INDEX idx_feed_items_cursor
+            ON feed_items (primary_sort_time, pub_date, id)
+            """.trimIndent(),
+        )
+
+        database.execSQL(
+            """
+            update feed_items
+                set bookmarked = 1
+            where pinned = 1;
+            """.trimIndent(),
+        )
+    }
+}
+
 @Suppress("ClassName")
 class MigrationFrom24To25(override val di: DI) : Migration(24, 25), DIAware {
     private val filePathProvider: FilePathProvider by instance()
@@ -468,7 +490,7 @@ object MIGRATION_9_10 : Migration(9, 10) {
             """
             SELECT id, substr(description,0,1000000) FROM feed_items
             """.trimIndent(),
-        )?.use { cursor ->
+        ).use { cursor ->
             cursor.forEach {
                 val feedItemId = cursor.getLong(0)
                 val description = cursor.getString(1)
@@ -588,7 +610,7 @@ private fun legacyMigration(database: SupportSQLiteDatabase, version: Int) {
             SELECT _id, title, url, tag, customtitle, notify ${if (version == 6) ", imageUrl" else ""}
             FROM Feed
         """.trimIndent(),
-    )?.use { cursor ->
+    ).use { cursor ->
         cursor.forEach { _ ->
             val oldFeedId = cursor.getLong(0)
 
@@ -614,7 +636,7 @@ private fun legacyMigration(database: SupportSQLiteDatabase, version: Int) {
                     FROM FeedItem
                     WHERE feed = $oldFeedId
                 """.trimIndent(),
-            )?.use { cursor ->
+            ).use { cursor ->
                 database.inTransaction {
                     cursor.forEach { _ ->
                         database.insert(

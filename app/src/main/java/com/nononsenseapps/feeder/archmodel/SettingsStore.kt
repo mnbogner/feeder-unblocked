@@ -41,14 +41,6 @@ class SettingsStore(override val di: DI) : DIAware {
         _showOnlyUnread.value = value
     }
 
-    private val _showOnlyBookmarked =
-        MutableStateFlow(sp.getBoolean(PREF_SHOW_ONLY_BOOKMARKED, false))
-    val showOnlyBookmarked: StateFlow<Boolean> = _showOnlyBookmarked.asStateFlow()
-    fun setShowOnlyBookmarked(value: Boolean) {
-        sp.edit().putBoolean(PREF_SHOW_ONLY_BOOKMARKED, value).apply()
-        _showOnlyBookmarked.value = value
-    }
-
     private val _currentFeedAndTag = MutableStateFlow(
         sp.getLong(PREF_LAST_FEED_ID, ID_UNSET) to (sp.getString(PREF_LAST_FEED_TAG, null) ?: ""),
     )
@@ -75,6 +67,15 @@ class SettingsStore(override val di: DI) : DIAware {
     fun setIsArticleOpen(open: Boolean) {
         _isArticleOpen.update { open }
         sp.edit().putBoolean(PREF_IS_ARTICLE_OPEN, open).apply()
+    }
+
+    private val _isMarkAsReadOnScroll = MutableStateFlow(
+        sp.getBoolean(PREF_IS_MARK_AS_READ_ON_SCROLL, false),
+    )
+    val isMarkAsReadOnScroll: StateFlow<Boolean> = _isMarkAsReadOnScroll.asStateFlow()
+    fun setIsMarkAsReadOnScroll(open: Boolean) {
+        _isMarkAsReadOnScroll.update { open }
+        sp.edit().putBoolean(PREF_IS_MARK_AS_READ_ON_SCROLL, open).apply()
     }
 
     private val _currentTheme = MutableStateFlow(
@@ -210,6 +211,7 @@ class SettingsStore(override val di: DI) : DIAware {
             PREF_VAL_OPEN_WITH_WEBVIEW,
             PREF_VAL_OPEN_WITH_CUSTOM_TAB,
             -> ItemOpener.CUSTOM_TAB
+
             else -> ItemOpener.READER
         },
     )
@@ -444,6 +446,8 @@ const val PREF_VAL_OPEN_WITH_BROWSER = "2"
 const val PREF_VAL_OPEN_WITH_CUSTOM_TAB = "3"
 
 const val PREF_TEXT_SCALE = "pref_body_text_scale"
+
+const val PREF_IS_MARK_AS_READ_ON_SCROLL = "pref_is_mark_as_read_on_scroll"
 
 /**
  * Read Aloud Settings

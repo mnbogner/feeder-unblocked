@@ -7,6 +7,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.nononsenseapps.feeder.db.COL_CUSTOM_TITLE
 import com.nononsenseapps.feeder.db.COL_ID
 import com.nononsenseapps.feeder.db.COL_TAG
@@ -49,6 +50,18 @@ interface FeedDao {
 
     @Query("SELECT * FROM feeds WHERE id IS :feedId")
     suspend fun loadFeed(feedId: Long): Feed?
+
+    @Query(
+        """
+        SELECT 
+            id,
+            COALESCE(NULLIF(custom_title, ''), title) as title,
+            notify
+        FROM feeds
+        ORDER BY COALESCE(NULLIF(custom_title, ''), title) COLLATE NOCASE
+        """,
+    )
+    fun loadFlowOfFeedsForSettings(): Flow<List<FeedForSettings>>
 
     @Query(
         """
@@ -181,17 +194,7 @@ interface FeedDao {
         """,
     )
     suspend fun deleteFeedWithUrl(url: URL): Int
-}
 
-/**
- * Inserts or updates feed depending on if ID is valid. Returns ID.
- */
-suspend fun FeedDao.upsertFeed(feed: Feed): Long = when (feed.id > ID_UNSET) {
-    true -> {
-        updateFeed(feed)
-        feed.id
-    }
-    false -> {
-        insertFeed(feed)
-    }
+    @Upsert
+    suspend fun upsert(feed: Feed): Long
 }

@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.ContentAlpha
 import androidx.compose.material.LocalContentAlpha
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Terrain
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -37,15 +40,16 @@ import coil.size.Precision
 import coil.size.Scale
 import com.nononsenseapps.feeder.R
 import com.nononsenseapps.feeder.db.room.ID_UNSET
+import com.nononsenseapps.feeder.ui.compose.coil.rememberTintedVectorPainter
 import com.nononsenseapps.feeder.ui.compose.minimumTouchSize
 import com.nononsenseapps.feeder.ui.compose.text.WithBidiDeterminedLayoutDirection
 import com.nononsenseapps.feeder.ui.compose.theme.FeedListItemDateStyle
 import com.nononsenseapps.feeder.ui.compose.theme.FeedListItemFeedTitleStyle
 import com.nononsenseapps.feeder.ui.compose.theme.FeedListItemTitleTextStyle
 import com.nononsenseapps.feeder.ui.compose.theme.FeederTheme
-import com.nononsenseapps.feeder.ui.compose.theme.rememberPlaceholderImage
 import com.nononsenseapps.feeder.ui.compose.theme.titleFontWeight
 import com.nononsenseapps.feeder.ui.compose.utils.ThemePreviews
+import org.threeten.bp.Instant
 
 @Composable
 fun FeedItemCard(
@@ -54,11 +58,11 @@ fun FeedItemCard(
     onMarkAboveAsRead: () -> Unit,
     onMarkBelowAsRead: () -> Unit,
     onShareItem: () -> Unit,
-    onTogglePinned: () -> Unit,
     onToggleBookmarked: () -> Unit,
     dropDownMenuExpanded: Boolean,
     onDismissDropdown: () -> Unit,
     newIndicator: Boolean,
+    bookmarkIndicator: Boolean,
     modifier: Modifier = Modifier,
 ) {
     ElevatedCard(
@@ -70,7 +74,6 @@ fun FeedItemCard(
                 .requiredHeightIn(min = minimumTouchSize),
         ) {
             if (showThumbnail) {
-                val placeholder = rememberPlaceholderImage()
                 item.imageUrl?.let { imageUrl ->
                     Box(
                         modifier = Modifier.fillMaxWidth(),
@@ -85,11 +88,11 @@ fun FeedItemCard(
                                     },
                                 )
                                 .scale(Scale.FIT)
-                                .placeholder(placeholder)
                                 .size(1000)
-                                .error(placeholder)
                                 .precision(Precision.INEXACT)
                                 .build(),
+                            placeholder = rememberTintedVectorPainter(Icons.Outlined.Terrain),
+                            error = rememberTintedVectorPainter(Icons.Outlined.ErrorOutline),
                             contentDescription = stringResource(id = R.string.article_image),
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
@@ -99,8 +102,7 @@ fun FeedItemCard(
                         )
                         FeedItemIndicatorRow(
                             unread = item.unread && newIndicator,
-                            bookmarked = item.bookmarked,
-                            pinned = item.pinned,
+                            bookmarked = item.bookmarked && bookmarkIndicator,
                             modifier = Modifier.padding(
                                 top = 12.dp,
                                 end = 12.dp,
@@ -163,30 +165,14 @@ fun FeedItemCard(
                             DropdownMenuItem(
                                 onClick = {
                                     onDismissDropdown()
-                                    onTogglePinned()
-                                },
-                                text = {
-                                    Text(
-                                        text = stringResource(
-                                            when (item.pinned) {
-                                                true -> R.string.unpin_article
-                                                false -> R.string.pin_article
-                                            },
-                                        ),
-                                    )
-                                },
-                            )
-                            DropdownMenuItem(
-                                onClick = {
-                                    onDismissDropdown()
                                     onToggleBookmarked()
                                 },
                                 text = {
                                     Text(
                                         text = stringResource(
                                             when (item.bookmarked) {
-                                                true -> R.string.remove_bookmark
-                                                false -> R.string.bookmark_article
+                                                true -> R.string.unsave_article
+                                                false -> R.string.save_article
                                             },
                                         ),
                                     )
@@ -244,8 +230,7 @@ fun FeedItemCard(
                 if (!showThumbnail || item.imageUrl == null) {
                     FeedItemIndicatorColumn(
                         unread = item.unread && newIndicator,
-                        bookmarked = item.bookmarked,
-                        pinned = item.pinned,
+                        bookmarked = item.bookmarked && bookmarkIndicator,
                         modifier = Modifier.padding(
                             top = 12.dp,
                             bottom = 12.dp,
@@ -272,19 +257,20 @@ private fun Preview() {
                 imageUrl = null,
                 link = null,
                 id = ID_UNSET,
-                pinned = false,
                 bookmarked = false,
                 feedImageUrl = null,
+                primarySortTime = Instant.EPOCH,
+                rawPubDate = null,
             ),
             showThumbnail = true,
             onMarkAboveAsRead = {},
             onMarkBelowAsRead = {},
             onShareItem = {},
-            onTogglePinned = {},
             onToggleBookmarked = {},
             dropDownMenuExpanded = false,
             onDismissDropdown = {},
             newIndicator = true,
+            bookmarkIndicator = true,
         )
     }
 }
@@ -306,19 +292,20 @@ private fun PreviewWithImage() {
                     imageUrl = "blabla",
                     link = null,
                     id = ID_UNSET,
-                    pinned = true,
                     bookmarked = true,
                     feedImageUrl = null,
+                    primarySortTime = Instant.EPOCH,
+                    rawPubDate = null,
                 ),
                 showThumbnail = true,
                 onMarkAboveAsRead = {},
                 onMarkBelowAsRead = {},
                 onShareItem = {},
-                onTogglePinned = {},
                 onToggleBookmarked = {},
                 dropDownMenuExpanded = false,
                 onDismissDropdown = {},
                 newIndicator = true,
+                bookmarkIndicator = true,
             )
         }
     }
