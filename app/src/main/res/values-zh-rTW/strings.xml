@@ -43,6 +43,7 @@
     <string name="search_feed_empty_hint">輸入一個訂閱地址</string>
     <string name="empty_feed_add"><annotation style="link">新增</annotation>更多訂閱？</string>
     <string name="empty_feed_open"><annotation style="link">打開</annotation>另一個訂閱？</string>
+    <string name="empty_feed_sync"><annotation style="link">同步</annotation>默认信息源？</string>
     <string name="empty_feed_top">沒有可閱讀的內容。您是否想要…</string>
     <string name="save">儲存</string>
     <string name="on_date" comment="1 is the date. Used in the feed view.">%1$s</string>

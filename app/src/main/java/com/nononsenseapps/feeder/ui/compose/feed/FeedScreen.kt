@@ -253,6 +253,9 @@ fun FeedScreen(
             onEditFeed = { feedId ->
                 EditFeedDestination.navigate(navController, feedId)
             },
+            onForceSync = {
+                viewModel.requestImmediateSyncOfAll()
+            },
             onShowEditDialog = {
                 viewModel.setShowEditDialog(true)
             },
@@ -339,6 +342,7 @@ fun FeedScreen(
     ttsOnSelectLanguage: (LocaleOverride) -> Unit,
     onAddFeed: () -> Unit,
     onEditFeed: (Long) -> Unit,
+    onForceSync: () -> Unit,
     onShowEditDialog: () -> Unit,
     onDismissEditDialog: () -> Unit,
     onDeleteFeeds: (Iterable<Long>) -> Unit,
@@ -626,6 +630,7 @@ fun FeedScreen(
                     }
                 },
                 onAddFeed = onAddFeed,
+                onForceSync = onForceSync,
                 markAsUnread = markAsUnread,
                 markBeforeAsRead = markBeforeAsRead,
                 markAfterAsRead = markAfterAsRead,
@@ -648,6 +653,7 @@ fun FeedScreen(
                     }
                 },
                 onAddFeed = onAddFeed,
+                onForceSync = onForceSync,
                 markAsUnread = markAsUnread,
                 markBeforeAsRead = markBeforeAsRead,
                 markAfterAsRead = markAfterAsRead,
@@ -868,6 +874,7 @@ fun FeedListContent(
     viewState: FeedScreenViewState,
     onOpenNavDrawer: () -> Unit,
     onAddFeed: () -> Unit,
+    onForceSync: () -> Unit,
     markAsUnread: (Long, Boolean, FeedOrTag?) -> Unit,
     markBeforeAsRead: (FeedItemCursor) -> Unit,
     markAfterAsRead: (FeedItemCursor) -> Unit,
@@ -897,6 +904,7 @@ fun FeedListContent(
                 modifier = Modifier,
                 onOpenOtherFeed = onOpenNavDrawer,
                 onAddFeed = onAddFeed,
+                onForceSync = onForceSync,
             )
         }
 
@@ -1048,6 +1056,7 @@ fun FeedGridContent(
     viewState: FeedScreenViewState,
     onOpenNavDrawer: () -> Unit,
     onAddFeed: () -> Unit,
+    onForceSync: () -> Unit,
     markAsUnread: (Long, Boolean, FeedOrTag?) -> Unit,
     markBeforeAsRead: (FeedItemCursor) -> Unit,
     markAfterAsRead: (FeedItemCursor) -> Unit,
@@ -1080,6 +1089,7 @@ fun FeedGridContent(
                 modifier = Modifier,
                 onOpenOtherFeed = onOpenNavDrawer,
                 onAddFeed = onAddFeed,
+                onForceSync = onForceSync,
             )
         }
 

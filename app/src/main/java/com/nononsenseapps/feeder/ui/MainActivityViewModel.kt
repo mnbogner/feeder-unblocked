@@ -23,6 +23,22 @@ class MainActivityViewModel(di: DI) : DIAwareViewModel(di) {
     val shouldSyncOnResume: Boolean =
         repository.syncOnResume.value
 
+    fun firstRun(): Boolean {
+        return repository.firstRun()
+    }
+
+    fun setFirstRun(firstRun: Boolean) {
+        repository.setFirstRun(firstRun)
+    }
+
+    fun setupFailed(): Boolean {
+        return repository.setupFailed()
+    }
+
+    fun setSetupFailed(setupFailed: Boolean) {
+        repository.setSetupFailed(setupFailed)
+    }
+
     fun ensurePeriodicSyncConfigured() = viewModelScope.launch {
         repository.ensurePeriodicSyncConfigured()
     }

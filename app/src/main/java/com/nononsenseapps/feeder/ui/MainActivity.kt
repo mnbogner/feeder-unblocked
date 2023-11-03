@@ -62,7 +62,20 @@ class MainActivity : DIAwareComponentActivity() {
                             CronetNetworking.initializeCronetEngine(context, validUrl)
                         }
                         // after starting CronetEngine, sync feeds
-                        maybeRequestSync()
+                        // TODO: if a sync attempt during startup has failed because envoy setup
+                        //  was incomplete, this may find no feeds to sync because of timestamps
+                        if (mainActivityViewModel.firstRun()) {
+                            Log.d(LOG_TAG, "first run, don't force sync")
+                            maybeRequestSync()
+                            mainActivityViewModel.setFirstRun(false)
+                        } else if (mainActivityViewModel.setupFailed()) {
+                            Log.d(LOG_TAG, "setup failed, force sync")
+                            alwaysRequestSync()
+                            mainActivityViewModel.setSetupFailed(false)
+                        } else {
+                            Log.d(LOG_TAG, "setup ok, don't force sync")
+                            maybeRequestSync()
+                        }
                     } else {
                         Log.d(LOG_TAG, "already selected a valid url, ignore additional urls")
                     }
@@ -176,6 +189,14 @@ class MainActivity : DIAwareComponentActivity() {
         } else {
             Log.d(LOG_TAG, "don't sync feeds")
         }
+    }
+
+    private fun alwaysRequestSync() = lifecycleScope.launch {
+        Log.d(LOG_TAG, "force sync request")
+        requestFeedSync(
+            di = di,
+            forceNetwork = true, // pass true to force sync regardless of last sync time
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

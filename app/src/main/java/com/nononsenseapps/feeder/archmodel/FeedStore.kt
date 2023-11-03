@@ -35,9 +35,13 @@ class FeedStore(override val di: DI) : DIAware {
         }
     }
 
-    suspend fun getFeed(feedId: Long): Feed? = feedDao.loadFeed(feedId)
+    suspend fun getFeed(feedId: Long): Feed? {
+        return feedDao.loadFeed(feedId)
+    }
 
-    suspend fun getFeed(url: URL): Feed? = feedDao.loadFeedWithUrl(url)
+    suspend fun getFeed(url: URL): Feed? {
+        return feedDao.loadFeedWithUrl(url)
+    }
 
     suspend fun saveFeed(feed: Feed): Long {
         return if (feed.id > ID_UNSET) {
@@ -51,8 +55,9 @@ class FeedStore(override val di: DI) : DIAware {
     suspend fun toggleNotifications(feedId: Long, value: Boolean) =
         feedDao.setNotify(id = feedId, notify = value)
 
-    suspend fun getDisplayTitle(feedId: Long): String? =
-        feedDao.getFeedTitle(feedId)?.displayTitle
+    suspend fun getDisplayTitle(feedId: Long): String? {
+        return feedDao.getFeedTitle(feedId)?.displayTitle
+    }
 
     suspend fun deleteFeeds(feedIds: List<Long>) {
         feedDao.deleteFeeds(feedIds)
@@ -111,12 +116,13 @@ class FeedStore(override val di: DI) : DIAware {
         return data.sorted()
     }
 
-    fun getFeedTitles(feedId: Long, tag: String): Flow<List<FeedTitle>> =
+    fun getFeedTitles(feedId: Long, tag: String): Flow<List<FeedTitle>> {
         when {
-            feedId > ID_UNSET -> feedDao.getFeedTitlesWithId(feedId)
-            tag.isNotBlank() -> feedDao.getFeedTitlesWithTag(tag)
-            else -> feedDao.getAllFeedTitles()
+            feedId > ID_UNSET -> return feedDao.getFeedTitlesWithId(feedId)
+            tag.isNotBlank() -> return feedDao.getFeedTitlesWithTag(tag)
+            else -> return feedDao.getAllFeedTitles()
         }
+    }
 
     fun getCurrentlySyncingLatestTimestamp(): Flow<Instant?> =
         feedDao.getCurrentlySyncingLatestTimestamp()
@@ -144,21 +150,27 @@ class FeedStore(override val di: DI) : DIAware {
         feedDao.deleteFeedWithUrl(url)
     }
 
-    suspend fun loadFeedIfStale(feedId: Long, staleTime: Long) =
-        feedDao.loadFeedIfStale(feedId = feedId, staleTime = staleTime)
+    suspend fun loadFeedIfStale(feedId: Long, staleTime: Long): Feed? {
+        return feedDao.loadFeedIfStale(feedId = feedId, staleTime = staleTime)
+    }
 
-    suspend fun loadFeed(feedId: Long): Feed? =
-        feedDao.loadFeed(feedId = feedId)
+    suspend fun loadFeed(feedId: Long): Feed? {
+        return feedDao.loadFeed(feedId = feedId)
+    }
 
-    suspend fun loadFeedsIfStale(tag: String, staleTime: Long) =
-        feedDao.loadFeedsIfStale(tag = tag, staleTime = staleTime)
+    suspend fun loadFeedsIfStale(tag: String, staleTime: Long): List<Feed> {
+        return feedDao.loadFeedsIfStale(tag = tag, staleTime = staleTime)
+    }
 
-    suspend fun loadFeedsIfStale(staleTime: Long) =
-        feedDao.loadFeedsIfStale(staleTime = staleTime)
+    suspend fun loadFeedsIfStale(staleTime: Long): List<Feed> {
+        return feedDao.loadFeedsIfStale(staleTime = staleTime)
+    }
 
-    suspend fun loadFeeds(tag: String) =
-        feedDao.loadFeeds(tag = tag)
+    suspend fun loadFeeds(tag: String): List<Feed> {
+        return feedDao.loadFeeds(tag = tag)
+    }
 
-    suspend fun loadFeeds() =
-        feedDao.loadFeeds()
+    suspend fun loadFeeds(): List<Feed> {
+        return feedDao.loadFeeds()
+    }
 }

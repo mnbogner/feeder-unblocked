@@ -338,10 +338,10 @@ private fun getPendingDeleteIntent(context: Context, feedItem: FeedItemWithFeed)
     )
 
 private fun notificationBuilder(context: Context): NotificationCompat.Builder {
-    val bm = BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher)
+    val bm = BitmapFactory.decodeResource(context.resources, R.drawable.ff_logomark_cropped)
 
     return NotificationCompat.Builder(context, channelId)
-        .setSmallIcon(R.drawable.ic_stat_f)
+        .setSmallIcon(R.drawable.ff_logomark_white)
         .setLargeIcon(bm)
         .setAutoCancel(true)
         .setCategory(NotificationCompat.CATEGORY_SOCIAL)

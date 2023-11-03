@@ -84,7 +84,9 @@ abstract class AppDatabase : RoomDatabase() {
         private fun buildDatabase(context: Context): AppDatabase {
             val di: DI by closestDI(context)
             return Room.databaseBuilder(context, AppDatabase::class.java, DATABASE_NAME)
+                .createFromAsset("database/rssDatabase.db")  // db contains default feeds
                 .addMigrations(*getAllMigrations(di))
+                .fallbackToDestructiveMigration()  // if migration fails, overwrite
                 .build()
         }
     }

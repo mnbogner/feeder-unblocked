@@ -6,7 +6,7 @@ buildscript {
         google()
     }
     dependencies {
-        classpath("org.greatfire:IEnvoyProxy:1.3.1")
+        classpath("org.greatfire:IEnvoyProxy:1.5.0")
     }
 }
 

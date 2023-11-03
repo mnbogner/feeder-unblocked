@@ -1,3 +1,4 @@
+@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -22,8 +23,8 @@ android {
     namespace = "com.nononsenseapps.feeder"
     defaultConfig {
         applicationId = "com.nononsenseapps.feeder"
-        versionCode = 10277
-        versionName = "2.4.15.00"
+        versionCode = 10278
+        versionName = "2.4.15.01"
         compileSdk = 33
         minSdk = 23
         targetSdk = 33

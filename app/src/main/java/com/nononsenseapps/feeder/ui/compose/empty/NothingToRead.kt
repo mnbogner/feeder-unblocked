@@ -36,6 +36,7 @@ fun NothingToRead(
     modifier: Modifier = Modifier,
     onOpenOtherFeed: () -> Unit = {},
     onAddFeed: () -> Unit = {},
+    onForceSync: () -> Unit = {},
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -85,6 +86,24 @@ fun NothingToRead(
             ) {
                 Text(
                     text = annotatedStringResource(id = R.string.empty_feed_add),
+                    style = MaterialTheme.typography.headlineMedium.merge(
+                        TextStyle(fontWeight = FontWeight.Light),
+                    ),
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .heightIn(min = TextFieldDefaults.MinHeight)
+                    .fillMaxWidth()
+                    .clickable {
+                        onForceSync()
+                    },
+            ) {
+                Text(
+                    text = annotatedStringResource(id = R.string.empty_feed_sync),
                     style = MaterialTheme.typography.headlineMedium.merge(
                         TextStyle(fontWeight = FontWeight.Light),
                     ),

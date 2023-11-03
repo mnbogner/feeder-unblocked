@@ -138,11 +138,14 @@ class RssLocalSync(override val di: DI) : DIAware {
                                     downloadTime = downloadTime,
                                 )
                             } catch (e: Throwable) {
+                                // TODO: sync appears to update timestamps even if sync fails here
+                                //  and feeds will not sync again unless forced or time passes
                                 Log.e(
                                     LOG_TAG,
                                     "Failed to sync ${it.displayTitle}: ${it.url}",
                                     e,
                                 )
+                                repository.setSetupFailed(true)
                             } finally {
                                 repository.setCurrentlySyncingOn(feedId = it.id, syncing = false)
                             }

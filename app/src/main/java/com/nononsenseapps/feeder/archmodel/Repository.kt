@@ -161,6 +161,22 @@ class Repository(override val di: DI) : DIAware {
     val syncFrequency = settingsStore.syncFrequency
     suspend fun setSyncFrequency(value: SyncFrequency) = settingsStore.setSyncFrequency(value)
 
+    fun firstRun(): Boolean {
+        return settingsStore.firstRun()
+    }
+
+    fun setFirstRun(firstRun: Boolean) {
+        settingsStore.setFirstRun(firstRun)
+    }
+
+    fun setupFailed(): Boolean {
+        return settingsStore.setupFailed()
+    }
+
+    fun setSetupFailed(setupFailed: Boolean) {
+        settingsStore.setSetupFailed(setupFailed)
+    }
+
     val resumeTime: StateFlow<Instant> = sessionStore.resumeTime
     fun setResumeTime(value: Instant) {
         sessionStore.setResumeTime(value)
@@ -257,7 +273,9 @@ class Repository(override val di: DI) : DIAware {
 
     suspend fun getFeed(url: URL): Feed? = feedStore.getFeed(url)
 
-    suspend fun saveFeed(feed: Feed): Long = feedStore.saveFeed(feed)
+    suspend fun saveFeed(feed: Feed): Long {
+        return feedStore.saveFeed(feed)
+    }
 
     suspend fun setBookmarked(itemId: Long, bookmarked: Boolean) =
         feedItemStore.setBookmarked(itemId = itemId, bookmarked = bookmarked)
@@ -386,8 +404,9 @@ class Repository(override val di: DI) : DIAware {
             onlyUnread = true,
         )
 
-    fun getVisibleFeedTitles(feedId: Long, tag: String): Flow<List<FeedTitle>> =
-        feedStore.getFeedTitles(feedId, tag).buffer(1)
+    fun getVisibleFeedTitles(feedId: Long, tag: String): Flow<List<FeedTitle>> {
+        return feedStore.getFeedTitles(feedId, tag).buffer(1)
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getCurrentlyVisibleFeedTitles(): Flow<List<FeedTitle>> =

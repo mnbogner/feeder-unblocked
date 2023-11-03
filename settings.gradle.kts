@@ -221,15 +221,15 @@ dependencyResolutionManagement {
                 strictly(kotlinVersion)
             }
 
-            val cronetVersion = "102.0.5005.195-4"
+            val cronetVersion = "107.0.5304.150-1"
             library("cronet", "org.greatfire.envoy", "cronet").version {
                 strictly(cronetVersion)
             }
-            val envoyVersion = "102.0.5005.195.4"
+            val envoyVersion = "107.0.5304.150.5"
             library("envoy", "org.greatfire", "envoy").version {
                 strictly(envoyVersion)
             }
-            val proxyVersion = "1.3.1"
+            val proxyVersion = "1.5.0"
             library("proxy", "org.greatfire", "IEnvoyProxy").version {
                 strictly(proxyVersion)
             }

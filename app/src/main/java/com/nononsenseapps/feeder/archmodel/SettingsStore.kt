@@ -322,6 +322,22 @@ class SettingsStore(override val di: DI) : DIAware {
         configurePeriodicSync(replace = true)
     }
 
+    fun firstRun(): Boolean {
+        return sp.getBoolean(PREF_FIRST_RUN, true)
+    }
+
+    fun setFirstRun(firstRun: Boolean) {
+        sp.edit().putBoolean(PREF_FIRST_RUN, firstRun).apply()
+    }
+
+    fun setupFailed(): Boolean {
+        return sp.getBoolean(PREF_SETUP_FAILED, false)
+    }
+    
+    fun setSetupFailed(setupFailed: Boolean) {
+        sp.edit().putBoolean(PREF_SETUP_FAILED, setupFailed).apply()
+    }
+
     suspend fun configurePeriodicSync(replace: Boolean) {
         val workManager: WorkManager by instance()
         val shouldSync = syncFrequency.value.minutes > 0
@@ -453,6 +469,12 @@ const val PREF_IS_MARK_AS_READ_ON_SCROLL = "pref_is_mark_as_read_on_scroll"
  * Read Aloud Settings
  */
 const val PREF_READALOUD_USE_DETECT_LANGUAGE = "pref_readaloud_detect_lang"
+
+/*
+ * Network Setup Flags
+ */
+const val PREF_FIRST_RUN = "pref_first_run"
+const val PREF_SETUP_FAILED = "pref_setup_failed"
 
 enum class PrefValOpenWith {
     OPEN_WITH_DEFAULT,
